@@ -168,7 +168,7 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
-    if (activeEmergency && activeEmergency.emergencyId) {
+    if (activeEmergency && activeEmergency.emergencyId && activeEmergency.emergencyStatus === 'ACTIVE') {
       console.log('[LiveTracking Update] Interval Started');
       // Trigger first update immediately
       sendCurrentEmergencyLocation(activeEmergency.emergencyId);
@@ -184,7 +184,7 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
         console.log('[LiveTracking Update] Interval Stopped');
       }
     };
-  }, [activeEmergency?.emergencyId]);
+  }, [activeEmergency?.emergencyId, activeEmergency?.emergencyStatus]);
 
   const handleSignOut = async () => {
     setLoading(true);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,44 +80,47 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
     };
   }, [emergencyId]);
 
-  const htmlContent = initialCoordinates ? `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-      <style>
-        html, body, #map {
-          height: 100%;
-          width: 100%;
-          margin: 0;
-          padding: 0;
-          background-color: #0F0F11;
-        }
-      </style>
-    </head>
-    <body>
-      <div id="map"></div>
-      <script>
-        var map = L.map('map', {
-          zoomControl: false,
-          attributionControl: false
-        }).setView([${initialCoordinates.latitude}, ${initialCoordinates.longitude}], 15);
-        window.map = map;
+  const htmlContent = useMemo(() => {
+    if (!initialCoordinates) return '';
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          html, body, #map {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #0F0F11;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          var map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false
+          }).setView([${initialCoordinates.latitude}, ${initialCoordinates.longitude}], 15);
+          window.map = map;
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19
-        }).addTo(map);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+          }).addTo(map);
 
-        var marker = L.marker([${initialCoordinates.latitude}, ${initialCoordinates.longitude}]).addTo(map);
-        marker.bindPopup("<b>Tracked User</b>").openPopup();
-        window.trackedMarker = marker;
-      </script>
-    </body>
-    </html>
-  ` : '';
+          var marker = L.marker([${initialCoordinates.latitude}, ${initialCoordinates.longitude}]).addTo(map);
+          marker.bindPopup("<b>Tracked User</b>").openPopup();
+          window.trackedMarker = marker;
+        </script>
+      </body>
+      </html>
+    `;
+  }, [initialCoordinates?.latitude, initialCoordinates?.longitude]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -136,22 +139,9 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
         )}
       </View>
 
-      {/* Map View / Loading / Error State */}
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#FF3B30" />
-          <Text style={styles.loadingText}>Fetching live location...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={64} color="#FF453A" style={{ marginBottom: 16 }} />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={onNavigateBack} style={styles.errorBtn} activeOpacity={0.8}>
-            <Text style={styles.errorBtnText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.mapContainer}>
+      {/* Main Content Area */}
+      <View style={{ flex: 1 }}>
+        {initialCoordinates && (
           <WebView
             ref={webViewRef}
             style={styles.map}
@@ -160,8 +150,27 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
             domStorageEnabled={true}
             javaScriptEnabled={true}
           />
-        </View>
-      )}
+        )}
+
+        {/* Loading Overlay */}
+        {loading && !initialCoordinates && (
+          <View style={[StyleSheet.absoluteFillObject, styles.center, { backgroundColor: '#0F0F11' }]}>
+            <ActivityIndicator size="large" color="#FF3B30" />
+            <Text style={styles.loadingText}>Fetching live location...</Text>
+          </View>
+        )}
+
+        {/* Error Overlay */}
+        {error && (
+          <View style={[StyleSheet.absoluteFillObject, styles.center, { backgroundColor: '#0F0F11' }]}>
+            <Ionicons name="alert-circle-outline" size={64} color="#FF453A" style={{ marginBottom: 16 }} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={onNavigateBack} style={styles.errorBtn} activeOpacity={0.8}>
+              <Text style={styles.errorBtnText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
