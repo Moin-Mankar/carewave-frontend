@@ -1,5 +1,6 @@
 import { BACKEND_API_URL } from '../constants/api';
 import { getAuthData } from './storageService';
+import * as Location from 'expo-location';
 
 export interface CancelAlertResponse {
   breachEventId: string;
@@ -184,6 +185,79 @@ export async function getLiveLocation(eventId: string): Promise<LiveLocationResp
   } catch (error: any) {
     console.error(`[API Error] GET ${url} failed:`, error);
     throw error;
+  }
+}
+
+/**
+ * Sends updated GPS coordinates for an active emergency.
+ */
+export async function updateLiveLocation(
+  eventId: string,
+  latitude: number,
+  longitude: number
+): Promise<any> {
+  const url = `${BACKEND_API_URL}/tracking/live-location`;
+  const session = await getAuthData();
+  if (!session || !session.token) {
+    throw new Error('Authentication session not found.');
+  }
+
+  const payload = {
+    eventId,
+    latitude,
+    longitude,
+  };
+
+  console.log('[LiveTracking Update] Sending coordinates');
+  console.log('[API Request] PATCH - ' + url);
+  console.log('[API Payload]', JSON.stringify(payload));
+
+  try {
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    console.log(`[API Response Status] ${response.status} - ${response.statusText}`);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`HTTP Error ${response.status}: ${errorText || response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('[LiveTracking Update] Success');
+    return data;
+  } catch (error: any) {
+    console.error('[LiveTracking Update] Failure:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetches coordinates from Expo Location and posts updates to updateLiveLocation.
+ */
+export async function sendCurrentEmergencyLocation(emergencyId: string): Promise<boolean> {
+  console.log(`[LiveTracking Update] Emergency ID: ${emergencyId}`);
+  try {
+    const locationData = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+
+    const { latitude, longitude } = locationData.coords;
+    console.log(`[LiveTracking Update] Latitude: ${latitude}`);
+    console.log(`[LiveTracking Update] Longitude: ${longitude}`);
+
+    await updateLiveLocation(emergencyId, latitude, longitude);
+    console.log('[LiveTracking Update] PATCH Success');
+    return true;
+  } catch (error: any) {
+    console.error('[LiveTracking Update] PATCH Failed:', error);
+    return false;
   }
 }
 
