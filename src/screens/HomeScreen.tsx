@@ -1,3 +1,4 @@
+import messaging from '@react-native-firebase/messaging';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
@@ -48,9 +49,10 @@ interface HomeScreenProps {
   firstName: string;
   phoneNumber: string;
   onSignOut: () => void;
+  onNavigateToMap: (emergencyId?: string) => void;
 }
 
-export default function HomeScreen({ firstName, phoneNumber, onSignOut }: HomeScreenProps) {
+export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNavigateToMap }: HomeScreenProps) {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('Home');
   const [liveTrackingActive, setLiveTrackingActive] = useState(false);
@@ -127,6 +129,20 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut }: HomeSc
 
     fetchSystemStatus();
     checkActiveEmergency();
+
+    const getFcmToken = async () => {
+    try {
+      await messaging().requestPermission();
+
+      const token = await messaging().getToken();
+
+      console.log('FCM TOKEN:', token);
+    } catch (error) {
+      console.error('FCM ERROR:', error);
+    }
+  };
+
+  getFcmToken();
   }, []);
 
   // Pulse effect on countdown circle on each tick
@@ -495,7 +511,7 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut }: HomeSc
   // Quick Action click handlers
   const handleLiveTrackingPress = () => {
     console.log('[Quick Action] Live Tracking pressed.');
-    Alert.alert('Live Tracking', 'Live tracking will be initialized here.');
+    onNavigateToMap(activeEmergency?.emergencyId);
   };
 
   const handleEmergencyHistoryPress = () => {

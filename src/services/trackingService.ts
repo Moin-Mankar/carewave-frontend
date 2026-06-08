@@ -13,6 +13,7 @@ export interface ActiveEmergencyResponse {
   emergencyStatus: string;
   emergencyType: string;
   createdAt: string;
+  userId?: string;
 }
 
 /**
@@ -142,3 +143,47 @@ export async function getActiveEmergency(): Promise<ActiveEmergencyResponse | nu
     return null;
   }
 }
+
+export interface LiveLocationResponse {
+  latitude: number;
+  longitude: number;
+  lastLocationUpdatedAt: string;
+  gpsEnabled: boolean;
+}
+
+/**
+ * Calls the GET /tracking/live-location endpoint to fetch the tracked user's real-time coordinates.
+ */
+export async function getLiveLocation(eventId: string): Promise<LiveLocationResponse> {
+  const url = `${BACKEND_API_URL}/tracking/live-location?eventId=${encodeURIComponent(eventId)}`;
+  const session = await getAuthData();
+  if (!session || !session.token) {
+    throw new Error('Authentication session not found.');
+  }
+
+  console.log('[API Request] GET - ' + url);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.token}`,
+      },
+    });
+
+    console.log(`[API Response Status] ${response.status} - ${response.statusText}`);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`HTTP Error ${response.status}: ${errorText || response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('[API Response Body]', JSON.stringify(data));
+    return data as LiveLocationResponse;
+  } catch (error: any) {
+    console.error(`[API Error] GET ${url} failed:`, error);
+    throw error;
+  }
+}
+

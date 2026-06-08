@@ -6,14 +6,16 @@ import PhoneEntryScreen from './src/screens/PhoneEntryScreen';
 import OTPVerificationScreen from './src/screens/OTPVerificationScreen';
 import NewUserOnboardingScreen from './src/screens/NewUserOnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import LiveTrackingMapScreen from './src/screens/LiveTrackingMapScreen';
 import { getAuthData } from './src/services/storageService';
 
-type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME';
+type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('LOADING');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [firstName, setFirstName] = useState('');
+  const [selectedEmergencyId, setSelectedEmergencyId] = useState<string | undefined>(undefined);
 
   // App session restore check on startup
   useEffect(() => {
@@ -90,6 +92,19 @@ export default function App() {
               firstName={firstName}
               phoneNumber={phoneNumber}
               onSignOut={navigateToPhoneEntry}
+              onNavigateToMap={(emergencyId) => {
+                setSelectedEmergencyId(emergencyId);
+                setCurrentScreen('LIVE_TRACKING_MAP');
+              }}
+            />
+          )}
+          {currentScreen === 'LIVE_TRACKING_MAP' && (
+            <LiveTrackingMapScreen
+              emergencyId={selectedEmergencyId}
+              onNavigateBack={() => {
+                setSelectedEmergencyId(undefined);
+                setCurrentScreen('HOME');
+              }}
             />
           )}
         </>
