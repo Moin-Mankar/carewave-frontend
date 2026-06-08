@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,9 +10,10 @@ interface LiveTrackingMapScreenProps {
 }
 
 export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: LiveTrackingMapScreenProps) {
+  const webViewRef = useRef<WebView>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [initialCoordinates, setInitialCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const loadLocation = async () => {
     if (!emergencyId) {
@@ -22,7 +23,7 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
     }
 
     try {
-      if (!coordinates) {
+      if (!initialCoordinates) {
         setLoading(true);
       }
       setError(null);
@@ -34,7 +35,22 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
       } else {
         console.log(`[LiveTracking Fetch] Latitude: ${location.latitude}`);
         console.log(`[LiveTracking Fetch] Longitude: ${location.longitude}`);
-        setCoordinates({ latitude: location.latitude, longitude: location.longitude });
+        
+        if (!initialCoordinates) {
+          setInitialCoordinates({ latitude: location.latitude, longitude: location.longitude });
+        } else {
+          // Update Leaflet marker and pan map dynamically without reloading WebView
+          const jsCode = `
+            if (window.trackedMarker) {
+              window.trackedMarker.setLatLng([${location.latitude}, ${location.longitude}]);
+            }
+            if (window.map) {
+              window.map.panTo([${location.latitude}, ${location.longitude}]);
+            }
+            true;
+          `;
+          webViewRef.current?.injectJavaScript(jsCode);
+        }
       }
     } catch (err: any) {
       console.error('[LiveTracking] Failed to load live location:', err);
@@ -64,7 +80,7 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
     };
   }, [emergencyId]);
 
-  const htmlContent = coordinates ? `
+  const htmlContent = initialCoordinates ? `
     <!DOCTYPE html>
     <html>
     <head>
@@ -88,14 +104,16 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
         var map = L.map('map', {
           zoomControl: false,
           attributionControl: false
-        }).setView([${coordinates.latitude}, ${coordinates.longitude}], 15);
+        }).setView([${initialCoordinates.latitude}, ${initialCoordinates.longitude}], 15);
+        window.map = map;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19
         }).addTo(map);
 
-        var marker = L.marker([${coordinates.latitude}, ${coordinates.longitude}]).addTo(map);
+        var marker = L.marker([${initialCoordinates.latitude}, ${initialCoordinates.longitude}]).addTo(map);
         marker.bindPopup("<b>Tracked User</b>").openPopup();
+        window.trackedMarker = marker;
       </script>
     </body>
     </html>
@@ -135,6 +153,7 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
       ) : (
         <View style={styles.mapContainer}>
           <WebView
+            ref={webViewRef}
             style={styles.map}
             source={{ html: htmlContent }}
             originWhitelist={['*']}
