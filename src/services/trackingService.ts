@@ -229,6 +229,11 @@ export async function updateLiveLocation(
       throw new Error(`HTTP Error ${response.status}: ${errorText || response.statusText}`);
     }
 
+    if (response.status === 204) {
+      console.log('[LiveTracking Update] PATCH Success');
+      return null;
+    }
+
     const data = await response.json();
     console.log('[LiveTracking Update] Success');
     return data;
