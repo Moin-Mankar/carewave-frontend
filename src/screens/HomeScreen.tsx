@@ -21,7 +21,7 @@ import * as Location from 'expo-location';
 import * as Network from 'expo-network';
 import { clearAuthData, getAuthData } from '../services/storageService';
 import { createMedicalEmergency, createEmergency, getFireConfiguration } from '../services/emergencyService';
-import { cancelAlert, resolveAlert, getActiveEmergency, ActiveEmergencyResponse } from '../services/trackingService';
+import { cancelAlert, resolveAlert, getActiveEmergency, ActiveEmergencyResponse, sendCurrentEmergencyLocation } from '../services/trackingService';
 import EmergencySuccessModal from '../components/EmergencySuccessModal';
 import EmergencyFailureModal from '../components/EmergencyFailureModal';
 import EmergencyActiveModal from '../components/EmergencyActiveModal';
@@ -163,6 +163,28 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
       ]).start();
     }
   }, [countdown, showCountdownOverlay, showSuccessScreen]);
+
+  // Victim active emergency location auto update loop
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (activeEmergency && activeEmergency.emergencyId) {
+      console.log('[LiveTracking Update] Interval Started');
+      // Trigger first update immediately
+      sendCurrentEmergencyLocation(activeEmergency.emergencyId);
+
+      intervalId = setInterval(() => {
+        sendCurrentEmergencyLocation(activeEmergency.emergencyId);
+      }, 5000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        console.log('[LiveTracking Update] Interval Stopped');
+      }
+    };
+  }, [activeEmergency?.emergencyId]);
 
   const handleSignOut = async () => {
     setLoading(true);

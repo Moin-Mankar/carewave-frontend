@@ -256,7 +256,7 @@ export async function sendCurrentEmergencyLocation(emergencyId: string): Promise
     console.log('[LiveTracking Update] PATCH Success');
     return true;
   } catch (error: any) {
-    console.error('[LiveTracking Update] PATCH Failed:', error);
+    console.log('[LiveTracking Update] PATCH Failed');
     return false;
   }
 }

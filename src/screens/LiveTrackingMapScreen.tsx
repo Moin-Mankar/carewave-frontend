@@ -22,14 +22,18 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
     }
 
     try {
-      setLoading(true);
+      if (!coordinates) {
+        setLoading(true);
+      }
       setError(null);
-      console.log(`[LiveTracking] Fetching coordinates for emergency: ${emergencyId}`);
+      console.log('[LiveTracking Fetch] Fetching coordinates');
       const location = await getLiveLocation(emergencyId);
 
       if (location.latitude === null || location.longitude === null || location.latitude === undefined || location.longitude === undefined) {
         setError('No coordinates available for the emergency event.');
       } else {
+        console.log(`[LiveTracking Fetch] Latitude: ${location.latitude}`);
+        console.log(`[LiveTracking Fetch] Longitude: ${location.longitude}`);
         setCoordinates({ latitude: location.latitude, longitude: location.longitude });
       }
     } catch (err: any) {
@@ -41,7 +45,23 @@ export default function LiveTrackingMapScreen({ emergencyId, onNavigateBack }: L
   };
 
   useEffect(() => {
-    loadLocation();
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (emergencyId) {
+      console.log('[LiveTracking Fetch] Interval Started');
+      loadLocation();
+
+      intervalId = setInterval(() => {
+        loadLocation();
+      }, 5000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        console.log('[LiveTracking Fetch] Interval Stopped');
+      }
+    };
   }, [emergencyId]);
 
   const htmlContent = coordinates ? `
