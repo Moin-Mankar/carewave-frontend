@@ -2,6 +2,9 @@ import { BACKEND_API_URL } from '../constants/api';
 import { getAuthData } from './storageService';
 import * as Location from 'expo-location';
 
+let activeTrackingEmergencyId: string | null = null;
+let isLocationUpdateInProgress = false;
+
 export interface CancelAlertResponse {
   breachEventId: string;
   alertStatus: string;
@@ -21,6 +24,7 @@ export interface ActiveEmergencyResponse {
  * Calls the PATCH /emergency/cancel endpoint to cancel an active emergency alert.
  */
 export async function cancelAlert(emergencyId: string): Promise<ActiveEmergencyResponse> {
+  activeTrackingEmergencyId = null;
   const url = `${BACKEND_API_URL}/emergency/cancel`;
   const session = await getAuthData();
   if (!session || !session.token) {
@@ -63,6 +67,7 @@ export async function cancelAlert(emergencyId: string): Promise<ActiveEmergencyR
  * Calls the PATCH /emergency/resolve endpoint to resolve an active emergency alert.
  */
 export async function resolveAlert(emergencyId: string): Promise<ActiveEmergencyResponse> {
+  activeTrackingEmergencyId = null;
   const url = `${BACKEND_API_URL}/emergency/resolve`;
   const session = await getAuthData();
   if (!session || !session.token) {
@@ -247,22 +252,36 @@ export async function updateLiveLocation(
  * Fetches coordinates from Expo Location and posts updates to updateLiveLocation.
  */
 export async function sendCurrentEmergencyLocation(emergencyId: string): Promise<boolean> {
+  if (isLocationUpdateInProgress) {
+    console.log('[LiveTracking Update] Execution skipped: update already in progress');
+    return false;
+  }
+
+  activeTrackingEmergencyId = emergencyId;
+  isLocationUpdateInProgress = true;
+
   console.log(`[LiveTracking Update] Emergency ID: ${emergencyId}`);
   try {
     const locationData = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
     });
 
+    if (activeTrackingEmergencyId !== emergencyId) {
+      console.log('[LiveTracking Update] Execution aborted: emergency is no longer active');
+      return false;
+    }
+
     const { latitude, longitude } = locationData.coords;
     console.log(`[LiveTracking Update] Latitude: ${latitude}`);
     console.log(`[LiveTracking Update] Longitude: ${longitude}`);
 
     await updateLiveLocation(emergencyId, latitude, longitude);
-    console.log('[LiveTracking Update] PATCH Success');
     return true;
   } catch (error: any) {
     console.log('[LiveTracking Update] PATCH Failed');
     return false;
+  } finally {
+    isLocationUpdateInProgress = false;
   }
 }
 

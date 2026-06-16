@@ -1,4 +1,5 @@
 import { BACKEND_API_URL } from '../constants/api';
+import messaging from '@react-native-firebase/messaging';
 
 export interface UserCheckResponse {
   exists: boolean;
@@ -52,7 +53,15 @@ export async function checkUserExists(phoneNumber: string): Promise<UserCheckRes
  */
 export async function mobileLogin(contactNumber: string): Promise<AuthResponseData> {
   const url = `${BACKEND_API_URL}/auth/mobile-login`;
-  const payload = { contactNumber };
+  
+  let token = null;
+  try {
+    token = await messaging().getToken();
+  } catch (error) {
+    console.error('Failed to obtain FCM token', error);
+  }
+
+  const payload = { contactNumber, fcmToken: token };
 
   console.log(`[API Request] POST - ${url}`);
   console.log(`[API Payload]`, JSON.stringify(payload, null, 2));
@@ -92,7 +101,15 @@ export async function mobileRegister(
   gender: string
 ): Promise<AuthResponseData> {
   const url = `${BACKEND_API_URL}/auth/mobile-register`;
-  const payload = { firstName, contactNumber, bloodGroup, gender };
+
+  let token = null;
+  try {
+    token = await messaging().getToken();
+  } catch (error) {
+    console.error('Failed to obtain FCM token', error);
+  }
+
+  const payload = { firstName, contactNumber, bloodGroup, gender, fcmToken: token };
 
   console.log(`[API Request] POST - ${url}`);
   console.log(`[API Payload]`, JSON.stringify(payload, null, 2));

@@ -7,15 +7,18 @@ import OTPVerificationScreen from './src/screens/OTPVerificationScreen';
 import NewUserOnboardingScreen from './src/screens/NewUserOnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import LiveTrackingMapScreen from './src/screens/LiveTrackingMapScreen';
+import FakeCallSetupScreen from './src/screens/FakeCallSetupScreen';
+import FakeCallScreen from './src/screens/FakeCallScreen';
 import { getAuthData } from './src/services/storageService';
 
-type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP';
+type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('LOADING');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [firstName, setFirstName] = useState('');
   const [selectedEmergencyId, setSelectedEmergencyId] = useState<string | undefined>(undefined);
+  const [fakeCallerName, setFakeCallerName] = useState('');
 
   // App session restore check on startup
   useEffect(() => {
@@ -96,6 +99,9 @@ export default function App() {
                 setSelectedEmergencyId(emergencyId);
                 setCurrentScreen('LIVE_TRACKING_MAP');
               }}
+              onNavigateToFakeCallSetup={() => {
+                setCurrentScreen('FAKE_CALL_SETUP');
+              }}
             />
           )}
           {currentScreen === 'LIVE_TRACKING_MAP' && (
@@ -103,6 +109,26 @@ export default function App() {
               emergencyId={selectedEmergencyId}
               onNavigateBack={() => {
                 setSelectedEmergencyId(undefined);
+                setCurrentScreen('HOME');
+              }}
+            />
+          )}
+          {currentScreen === 'FAKE_CALL_SETUP' && (
+            <FakeCallSetupScreen
+              onNavigateBack={() => {
+                setCurrentScreen('HOME');
+              }}
+              onStartCall={(callerName) => {
+                setFakeCallerName(callerName);
+                setCurrentScreen('FAKE_CALL');
+              }}
+            />
+          )}
+          {currentScreen === 'FAKE_CALL' && (
+            <FakeCallScreen
+              callerName={fakeCallerName}
+              onEndCall={() => {
+                setFakeCallerName('');
                 setCurrentScreen('HOME');
               }}
             />

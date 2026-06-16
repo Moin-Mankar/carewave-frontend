@@ -50,9 +50,10 @@ interface HomeScreenProps {
   phoneNumber: string;
   onSignOut: () => void;
   onNavigateToMap: (emergencyId?: string) => void;
+  onNavigateToFakeCallSetup: () => void;
 }
 
-export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNavigateToMap }: HomeScreenProps) {
+export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNavigateToMap, onNavigateToFakeCallSetup }: HomeScreenProps) {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('Home');
   const [liveTrackingActive, setLiveTrackingActive] = useState(false);
@@ -166,9 +167,19 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
 
   // Victim active emergency location auto update loop
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    //let intervalId: NodeJS.Timeout | null = null;
 
     if (activeEmergency && activeEmergency.emergencyId && activeEmergency.emergencyStatus === 'ACTIVE') {
+          console.log(
+      '[LiveTracking Effect]',
+      'Emergency ID:',
+      activeEmergency.emergencyId,
+      'Status:',
+      activeEmergency.emergencyStatus
+    );
+      
       console.log('[LiveTracking Update] Interval Started');
       // Trigger first update immediately
       sendCurrentEmergencyLocation(activeEmergency.emergencyId);
@@ -546,9 +557,9 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
     Alert.alert('Emergency Contacts', 'Contacts registry will open here.');
   };
 
-  const handleSafeZonesPress = () => {
-    console.log('[Quick Action] Safe Zones pressed.');
-    Alert.alert('Safe Zones', 'Geo-monitoring parameters will open here.');
+  const handleFakeCallSetupPress = () => {
+    console.log('[Quick Action] Fake Call Setup pressed.');
+    onNavigateToFakeCallSetup();
   };
 
   const handleNearbyHospitalsPress = () => {
@@ -728,10 +739,10 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
                   onPress={handleEmergencyContactsPress}
                 />
                 <QuickActionCard
-                  title="Safe Zones"
-                  subtitle="Protected areas"
-                  icon="shield"
-                  onPress={handleSafeZonesPress}
+                  title="Fake Call"
+                  subtitle="Simulate active call"
+                  icon="phone"
+                  onPress={handleFakeCallSetupPress}
                 />
               </View>
               <View style={styles.gridRow}>
