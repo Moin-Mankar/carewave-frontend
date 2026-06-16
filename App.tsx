@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import './src/services/firebase';
 import PhoneEntryScreen from './src/screens/PhoneEntryScreen';
 import OTPVerificationScreen from './src/screens/OTPVerificationScreen';
@@ -65,8 +66,9 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" translucent={true} backgroundColor="transparent" />
+    <SafeAreaProvider>
+      <View style={styles.container}>
+        <StatusBar style="light" translucent={true} backgroundColor="transparent" />
       {currentScreen === 'LOADING' ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#D32F2F" />
@@ -146,7 +148,8 @@ export default function App() {
           )}
         </>
       )}
-    </View>
+      </View>
+    </SafeAreaProvider>
   );
 }
 
