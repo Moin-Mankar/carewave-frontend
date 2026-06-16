@@ -9,9 +9,10 @@ import HomeScreen from './src/screens/HomeScreen';
 import LiveTrackingMapScreen from './src/screens/LiveTrackingMapScreen';
 import FakeCallSetupScreen from './src/screens/FakeCallSetupScreen';
 import FakeCallScreen from './src/screens/FakeCallScreen';
+import AIAssistantScreen from './src/screens/AIAssistantScreen';
 import { getAuthData } from './src/services/storageService';
 
-type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL';
+type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL' | 'AI_ASSISTANT';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('LOADING');
@@ -102,6 +103,9 @@ export default function App() {
               onNavigateToFakeCallSetup={() => {
                 setCurrentScreen('FAKE_CALL_SETUP');
               }}
+              onNavigateToAIAssistant={() => {
+                setCurrentScreen('AI_ASSISTANT');
+              }}
             />
           )}
           {currentScreen === 'LIVE_TRACKING_MAP' && (
@@ -129,6 +133,13 @@ export default function App() {
               callerName={fakeCallerName}
               onEndCall={() => {
                 setFakeCallerName('');
+                setCurrentScreen('HOME');
+              }}
+            />
+          )}
+          {currentScreen === 'AI_ASSISTANT' && (
+            <AIAssistantScreen
+              onNavigateBack={() => {
                 setCurrentScreen('HOME');
               }}
             />

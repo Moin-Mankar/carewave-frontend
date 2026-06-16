@@ -51,9 +51,10 @@ interface HomeScreenProps {
   onSignOut: () => void;
   onNavigateToMap: (emergencyId?: string) => void;
   onNavigateToFakeCallSetup: () => void;
+  onNavigateToAIAssistant: () => void;
 }
 
-export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNavigateToMap, onNavigateToFakeCallSetup }: HomeScreenProps) {
+export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNavigateToMap, onNavigateToFakeCallSetup, onNavigateToAIAssistant }: HomeScreenProps) {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('Home');
   const [liveTrackingActive, setLiveTrackingActive] = useState(false);
@@ -719,10 +720,10 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
             <View style={styles.gridContainer}>
               <View style={styles.gridRow}>
                 <QuickActionCard
-                  title="Live Tracking"
-                  subtitle="Share live location"
-                  icon="map-pin"
-                  onPress={handleLiveTrackingPress}
+                  title="AI Emergency Assistant"
+                  subtitle="Emergency guidance"
+                  icon="message-square"
+                  onPress={onNavigateToAIAssistant}
                 />
                 <QuickActionCard
                   title="Emergency History"
@@ -754,9 +755,9 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
                 />
                 <QuickActionCard
                   title="AI Assistant"
-                  subtitle="Safety guidance"
+                  subtitle="In development"
                   icon="message-square"
-                  onPress={handleAIAssistantPress}
+                  onPress={() => Alert.alert('Coming Soon', 'This feature is currently under development.')}
                 />
               </View>
             </View>
