@@ -5,8 +5,8 @@ import {
   View,
   Modal,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface PersonalSafetySelectionModalProps {
@@ -20,6 +20,7 @@ export default function PersonalSafetySelectionModal({
   onSelectType,
   onCancel,
 }: PersonalSafetySelectionModalProps) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       visible={visible}
@@ -29,7 +30,7 @@ export default function PersonalSafetySelectionModal({
     >
       <View style={styles.overlay}>
         <SafeAreaView style={styles.safeArea}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom || 24 }]}>
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.title}>🛡 PERSONAL SAFETY</Text>

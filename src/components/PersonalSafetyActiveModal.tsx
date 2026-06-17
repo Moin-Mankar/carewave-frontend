@@ -6,8 +6,8 @@ import {
   Modal,
   TouchableOpacity,
   Linking,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface PersonalSafetyActiveModalProps {
@@ -21,6 +21,7 @@ export default function PersonalSafetyActiveModal({
   selectedSafetyType,
   onClose,
 }: PersonalSafetyActiveModalProps) {
+  const insets = useSafeAreaInsets();
   const isWomen = selectedSafetyType === 'WOMEN';
 
   const title = isWomen ? '🛡 WOMEN SAFETY ALERT ACTIVE' : '🛡 CHILD SAFETY ALERT ACTIVE';
@@ -53,7 +54,7 @@ export default function PersonalSafetyActiveModal({
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={handleCallHelpline}

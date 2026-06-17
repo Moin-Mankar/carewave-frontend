@@ -11,9 +11,10 @@ import LiveTrackingMapScreen from './src/screens/LiveTrackingMapScreen';
 import FakeCallSetupScreen from './src/screens/FakeCallSetupScreen';
 import FakeCallScreen from './src/screens/FakeCallScreen';
 import AIAssistantScreen from './src/screens/AIAssistantScreen';
+import SafetyCheckInScreen from './src/screens/SafetyCheckInScreen';
 import { getAuthData } from './src/services/storageService';
 
-type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL' | 'AI_ASSISTANT';
+type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL' | 'AI_ASSISTANT' | 'SAFETY_CHECK_IN';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('LOADING');
@@ -21,6 +22,8 @@ export default function App() {
   const [firstName, setFirstName] = useState('');
   const [selectedEmergencyId, setSelectedEmergencyId] = useState<string | undefined>(undefined);
   const [fakeCallerName, setFakeCallerName] = useState('');
+  const [pendingEmergencyType, setPendingEmergencyType] = useState<'MEDICAL' | 'POLICE' | 'OTHER' | null>(null);
+  const [isCheckInTrigger, setIsCheckInTrigger] = useState(false);
 
   // App session restore check on startup
   useEffect(() => {
@@ -108,6 +111,15 @@ export default function App() {
               onNavigateToAIAssistant={() => {
                 setCurrentScreen('AI_ASSISTANT');
               }}
+              onNavigateToSafetyCheckIn={() => {
+                setCurrentScreen('SAFETY_CHECK_IN');
+              }}
+              pendingEmergencyType={pendingEmergencyType}
+              isCheckInTrigger={isCheckInTrigger}
+              onClearPendingEmergency={() => {
+                setPendingEmergencyType(null);
+                setIsCheckInTrigger(false);
+              }}
             />
           )}
           {currentScreen === 'LIVE_TRACKING_MAP' && (
@@ -142,6 +154,18 @@ export default function App() {
           {currentScreen === 'AI_ASSISTANT' && (
             <AIAssistantScreen
               onNavigateBack={() => {
+                setCurrentScreen('HOME');
+              }}
+            />
+          )}
+          {currentScreen === 'SAFETY_CHECK_IN' && (
+            <SafetyCheckInScreen
+              onNavigateBack={() => {
+                setCurrentScreen('HOME');
+              }}
+              onTriggerEmergency={(type) => {
+                setPendingEmergencyType(type);
+                setIsCheckInTrigger(true);
                 setCurrentScreen('HOME');
               }}
             />

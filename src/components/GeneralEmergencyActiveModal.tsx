@@ -6,9 +6,9 @@ import {
   Modal,
   TouchableOpacity,
   Linking,
-  SafeAreaView,
   FlatList,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface Contact {
@@ -28,6 +28,7 @@ export default function GeneralEmergencyActiveModal({
   contacts = [], // Default to empty list for placeholder state
   onClose,
 }: GeneralEmergencyActiveModalProps) {
+  const insets = useSafeAreaInsets();
   
   const handleCallContact = (phoneNumber: string) => {
     Linking.openURL(`tel:${phoneNumber}`).catch((err) => console.error('Error opening dialer:', err));
@@ -90,7 +91,7 @@ export default function GeneralEmergencyActiveModal({
         </View>
 
         {/* Bottom Actions */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={onClose}

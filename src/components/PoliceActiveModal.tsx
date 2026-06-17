@@ -6,8 +6,8 @@ import {
   Modal,
   TouchableOpacity,
   Linking,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface PoliceActiveModalProps {
@@ -16,6 +16,7 @@ interface PoliceActiveModalProps {
 }
 
 export default function PoliceActiveModal({ visible, onClose }: PoliceActiveModalProps) {
+  const insets = useSafeAreaInsets();
   const handleCallPolice = () => {
     Linking.openURL('tel:100').catch((err) => console.error('Error opening dialer:', err));
   };
@@ -71,7 +72,7 @@ export default function PoliceActiveModal({ visible, onClose }: PoliceActiveModa
         </View>
 
         {/* Actions */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={handleCallPolice}

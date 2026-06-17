@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Battery from 'expo-battery';
@@ -43,7 +43,7 @@ import BottomNavigationBar from '../components/BottomNavigationBar';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-type EmergencyType = 'MEDICAL' | 'POLICE' | 'FIRE' | 'PERSONAL_SAFETY' | 'GENERAL';
+type EmergencyType = 'MEDICAL' | 'POLICE' | 'FIRE' | 'PERSONAL_SAFETY' | 'GENERAL' | 'OTHER';
 
 interface HomeScreenProps {
   firstName: string;
@@ -52,9 +52,25 @@ interface HomeScreenProps {
   onNavigateToMap: (emergencyId?: string) => void;
   onNavigateToFakeCallSetup: () => void;
   onNavigateToAIAssistant: () => void;
+  onNavigateToSafetyCheckIn: () => void;
+  pendingEmergencyType: 'MEDICAL' | 'POLICE' | 'OTHER' | null;
+  isCheckInTrigger: boolean;
+  onClearPendingEmergency: () => void;
 }
 
-export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNavigateToMap, onNavigateToFakeCallSetup, onNavigateToAIAssistant }: HomeScreenProps) {
+export default function HomeScreen({
+  firstName,
+  phoneNumber,
+  onSignOut,
+  onNavigateToMap,
+  onNavigateToFakeCallSetup,
+  onNavigateToAIAssistant,
+  onNavigateToSafetyCheckIn,
+  pendingEmergencyType,
+  isCheckInTrigger,
+  onClearPendingEmergency,
+}: HomeScreenProps) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('Home');
   const [liveTrackingActive, setLiveTrackingActive] = useState(false);
@@ -78,6 +94,9 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
   const [activeEmergency, setActiveEmergency] = useState<ActiveEmergencyResponse | null>(null);
   const [selectedEmergencyType, setSelectedEmergencyType] = useState<EmergencyType | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [triggeredByCheckIn, setTriggeredByCheckIn] = useState(false);
+  const [checkInTriggerType, setCheckInTriggerType] = useState<'MEDICAL' | 'POLICE' | 'OTHER' | null>(null);
+  const [showCheckInSuccessModal, setShowCheckInSuccessModal] = useState(false);
   const [showCountdownOverlay, setShowCountdownOverlay] = useState(false);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('');
@@ -144,8 +163,21 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
     }
   };
 
-  getFcmToken();
+    getFcmToken();
   }, []);
+
+  // Check for safety check-in pending emergency delegation
+  useEffect(() => {
+    if (pendingEmergencyType) {
+      const type = pendingEmergencyType;
+      onClearPendingEmergency();
+
+      setTriggeredByCheckIn(isCheckInTrigger);
+      setCheckInTriggerType(type);
+
+      handleEmergency(type);
+    }
+  }, [pendingEmergencyType]);
 
   // Pulse effect on countdown circle on each tick
   useEffect(() => {
@@ -531,7 +563,11 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
       setCountdown(null);
 
       // Show custom success modal
-      setShowSuccessModal(true);
+      if (triggeredByCheckIn) {
+        setShowCheckInSuccessModal(true);
+      } else {
+        setShowSuccessModal(true);
+      }
 
     } catch (error: any) {
       console.error("[STEP 5] Emergency service creation request failed:", error);
@@ -539,6 +575,8 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
       setShowCountdownOverlay(false);
       setSelectedEmergencyType(null);
       setCountdown(null);
+      setTriggeredByCheckIn(false);
+      setCheckInTriggerType(null);
     }
   };
 
@@ -726,10 +764,10 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
                   onPress={onNavigateToAIAssistant}
                 />
                 <QuickActionCard
-                  title="Emergency History"
-                  subtitle="Previous alerts"
-                  icon="clock"
-                  onPress={handleEmergencyHistoryPress}
+                  title="Safety Check-In"
+                  subtitle="Automatic welfare check"
+                  icon="shield"
+                  onPress={onNavigateToSafetyCheckIn}
                 />
               </View>
               <View style={styles.gridRow}>
@@ -788,7 +826,7 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
       >
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalDismissArea} onPress={() => setShowActionModal(false)} />
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom || 24 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Emergency Actions</Text>
               <TouchableOpacity
@@ -919,6 +957,73 @@ export default function HomeScreen({ firstName, phoneNumber, onSignOut, onNaviga
         fireSeverity={selectedFireSeverity}
         selectedSafetyType={selectedSafetyType}
       />
+
+      {/* Safety Check-In Success Modal */}
+      <Modal
+        visible={showCheckInSuccessModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowCheckInSuccessModal(false);
+          setTriggeredByCheckIn(false);
+          setCheckInTriggerType(null);
+        }}
+      >
+        <SafeAreaView style={styles.modalOverlay}>
+          <View style={styles.successModalContainer}>
+            <View style={styles.successModalIconBox}>
+              <MaterialCommunityIcons name="shield-check" size={48} color="#34C759" />
+            </View>
+            
+            <Text style={styles.successModalTitle}>
+              {checkInTriggerType === 'MEDICAL' ? 'Medical Emergency Activated' :
+               checkInTriggerType === 'POLICE' ? 'Police Assistance Activated' :
+               'General Emergency Activated'}
+            </Text>
+            
+            <View style={styles.successDivider} />
+            
+            <View style={styles.successRow}>
+              <MaterialCommunityIcons name="check-circle" size={18} color="#34C759" style={{ marginRight: 10 }} />
+              <Text style={styles.successRowText}>Emergency Alert Sent</Text>
+            </View>
+            
+            <View style={styles.successRow}>
+              <MaterialCommunityIcons name="check-circle" size={18} color="#34C759" style={{ marginRight: 10 }} />
+              <Text style={styles.successRowText}>Live Tracking Enabled</Text>
+            </View>
+            
+            <View style={styles.successFooter}>
+              {checkInTriggerType === 'MEDICAL' && (
+                <TouchableOpacity
+                  style={styles.successHospitalsBtn}
+                  onPress={() => {
+                    setShowCheckInSuccessModal(false);
+                    setTriggeredByCheckIn(false);
+                    setCheckInTriggerType(null);
+                    setShowActiveModal(true); // Open nearby hospitals listing
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.successHospitalsBtnText}>Nearby Hospitals</Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity
+                style={styles.successCloseBtn}
+                onPress={() => {
+                  setShowCheckInSuccessModal(false);
+                  setTriggeredByCheckIn(false);
+                  setCheckInTriggerType(null);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.successCloseBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
 
       <EmergencyFailureModal
         visible={showFailureModal}
@@ -1487,6 +1592,82 @@ const styles = StyleSheet.create({
   },
   activeCardResolveText: {
     color: '#34C759',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  successModalContainer: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#2C2C2E',
+    padding: 24,
+    width: '85%',
+    alignItems: 'center',
+  },
+  successModalIconBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(52, 199, 89, 0.25)',
+  },
+  successModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  successDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#2C2C2E',
+    marginVertical: 14,
+  },
+  successRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginVertical: 6,
+  },
+  successRowText: {
+    color: '#E5E5EA',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 10,
+  },
+  successFooter: {
+    width: '100%',
+    marginTop: 20,
+    gap: 10,
+  },
+  successHospitalsBtn: {
+    backgroundColor: '#D32F2F',
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successHospitalsBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  successCloseBtn: {
+    backgroundColor: 'transparent',
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#3A3A3C',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successCloseBtnText: {
+    color: '#E5E5EA',
     fontSize: 14,
     fontWeight: '700',
   },

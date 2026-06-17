@@ -8,9 +8,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
-  SafeAreaView,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 
@@ -22,6 +22,7 @@ interface EmergencyActiveModalProps {
 }
 
 export default function EmergencyActiveModal({ visible, onClose }: EmergencyActiveModalProps) {
+  const insets = useSafeAreaInsets();
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
@@ -321,7 +322,7 @@ export default function EmergencyActiveModal({ visible, onClose }: EmergencyActi
         )}
 
         {/* Ambulance Call Bar (At the bottom) */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={handleCallAmbulance}

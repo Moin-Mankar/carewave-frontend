@@ -18,14 +18,14 @@ import CustomButton from '../components/CustomButton';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const randomCallers = [
-  "Rahul Sharma",
+  "Satish Sharma",
   "Priya Singh",
-  "Aman Patel",
+  "Aman Gujjar",
   "Neha Verma",
-  "Arjun Mehta",
+  "Saish Sanas 67(DON)",
   "Sneha Kulkarni",
-  "Vikram Joshi",
-  "Riya Gupta"
+  "Prabhas Joshi",
+  "Shruti Gupta"
 ];
 
 interface FakeCallSetupScreenProps {

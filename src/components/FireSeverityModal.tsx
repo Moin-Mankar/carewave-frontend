@@ -5,9 +5,9 @@ import {
   View,
   Modal,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -23,6 +23,7 @@ export default function FireSeverityModal({
   onSelectSeverity,
   onCancel,
 }: FireSeverityModalProps) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       visible={visible}
@@ -32,7 +33,7 @@ export default function FireSeverityModal({
     >
       <View style={styles.overlay}>
         <SafeAreaView style={styles.safeArea}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom || 24 }]}>
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.title}>🔥 FIRE EMERGENCY</Text>

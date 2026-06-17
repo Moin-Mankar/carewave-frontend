@@ -6,8 +6,8 @@ import {
   Modal,
   TouchableOpacity,
   Linking,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface FireActiveModalProps {
@@ -16,6 +16,7 @@ interface FireActiveModalProps {
 }
 
 export default function FireActiveModal({ visible, onClose }: FireActiveModalProps) {
+  const insets = useSafeAreaInsets();
   const handleCallFireBrigade = () => {
     Linking.openURL('tel:101').catch((err) => console.error('Error opening dialer:', err));
   };
@@ -41,7 +42,7 @@ export default function FireActiveModal({ visible, onClose }: FireActiveModalPro
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={handleCallFireBrigade}
