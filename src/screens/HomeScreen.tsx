@@ -54,6 +54,7 @@ interface HomeScreenProps {
   onNavigateToAIAssistant: () => void;
   onNavigateToSafetyCheckIn: () => void;
   onNavigateToGeoFence: () => void;
+  onNavigateToEmergencyContacts: () => void;
   pendingEmergencyType: 'MEDICAL' | 'POLICE' | 'OTHER' | null;
   isCheckInTrigger: boolean;
   onClearPendingEmergency: () => void;
@@ -68,6 +69,7 @@ export default function HomeScreen({
   onNavigateToAIAssistant,
   onNavigateToSafetyCheckIn,
   onNavigateToGeoFence,
+  onNavigateToEmergencyContacts,
   pendingEmergencyType,
   isCheckInTrigger,
   onClearPendingEmergency,
@@ -595,7 +597,7 @@ export default function HomeScreen({
 
   const handleEmergencyContactsPress = () => {
     console.log('[Quick Action] Emergency Contacts pressed.');
-    Alert.alert('Emergency Contacts', 'Contacts registry will open here.');
+    onNavigateToEmergencyContacts();
   };
 
   const handleFakeCallSetupPress = () => {
@@ -626,6 +628,9 @@ export default function HomeScreen({
     } else if (tabName === 'LOCATION') {
       setActiveTab(tabName);
       handleLiveTrackingPress();
+    } else if (tabName === 'Contacts') {
+      console.log('[Navigation] Tab Contacts pressed. Navigating to Emergency Contacts.');
+      onNavigateToEmergencyContacts();
     } else {
       setActiveTab(tabName);
       console.log(`[Navigation] Tab ${tabName} pressed.`);

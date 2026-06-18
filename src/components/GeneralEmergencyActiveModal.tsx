@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,48 +7,86 @@ import {
   TouchableOpacity,
   Linking,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
-interface Contact {
-  id: string;
-  name: string;
-  phoneNumber: string;
-}
+import { getContacts, EmergencyContact } from '../services/emergencyContactService';
 
 interface GeneralEmergencyActiveModalProps {
   visible: boolean;
-  contacts?: Contact[];
   onClose: () => void;
 }
 
 export default function GeneralEmergencyActiveModal({
   visible,
-  contacts = [], // Default to empty list for placeholder state
   onClose,
 }: GeneralEmergencyActiveModalProps) {
   const insets = useSafeAreaInsets();
-  
-  const handleCallContact = (phoneNumber: string) => {
-    Linking.openURL(`tel:${phoneNumber}`).catch((err) => console.error('Error opening dialer:', err));
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      fetchContacts();
+    }
+  }, [visible]);
+
+  const fetchContacts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getContacts();
+      setContacts(data);
+    } catch (err: any) {
+      console.error('[GeneralEmergencyActiveModal] Error loading contacts:', err);
+      setError('Failed to load emergency contacts. Tap to retry.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const renderContactItem = ({ item }: { item: Contact }) => (
-    <View style={styles.contactCard}>
-      <View style={styles.contactInfo}>
-        <Text style={styles.contactName}>{item.name}</Text>
-        <Text style={styles.contactPhone}>{item.phoneNumber}</Text>
+  const handleCallContact = (phoneNumber: string) => {
+    Linking.openURL(`tel:${phoneNumber}`).catch((err) =>
+      console.error('Error opening dialer:', err)
+    );
+  };
+
+  const renderContactItem = ({ item }: { item: EmergencyContact }) => {
+    const isRegistered = item.linkedToRegisteredUser;
+    const relationFormatted = item.relation
+      ? item.relation.charAt(0).toUpperCase() + item.relation.slice(1).toLowerCase()
+      : '';
+
+    return (
+      <View style={styles.contactCard}>
+        <View style={styles.contactInfo}>
+          <View style={styles.nameRow}>
+            <Text style={styles.contactName}>{item.fullName}</Text>
+            {relationFormatted ? (
+              <View style={styles.relationBadge}>
+                <Text style={styles.relationBadgeText}>{relationFormatted}</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.contactPhone}>{item.contactNumber}</Text>
+          <View style={styles.statusRow}>
+            <Text style={[styles.statusText, isRegistered ? styles.statusRegistered : styles.statusExternal]}>
+              {isRegistered ? '🟢 CareWave User' : '⚪ External Contact'}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.callContactBtn}
+          activeOpacity={0.8}
+          onPress={() => handleCallContact(item.contactNumber)}
+        >
+          <MaterialCommunityIcons name="phone" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={styles.callContactBtn}
-        activeOpacity={0.8}
-        onPress={() => handleCallContact(item.phoneNumber)}
-      >
-        <MaterialCommunityIcons name="phone" size={20} color="#FFFFFF" />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
     <Modal
@@ -67,7 +105,16 @@ export default function GeneralEmergencyActiveModal({
         <View style={styles.content}>
           <Text style={styles.sectionTitle}>Emergency Contacts</Text>
 
-          {contacts.length === 0 ? (
+          {loading ? (
+            <View style={styles.spinnerWrapper}>
+              <ActivityIndicator size="large" color="#FF3B30" />
+            </View>
+          ) : error ? (
+            <TouchableOpacity style={styles.errorContainer} onPress={fetchContacts} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#FF3B30" style={{ marginBottom: 12 }} />
+              <Text style={styles.errorText}>{error}</Text>
+            </TouchableOpacity>
+          ) : contacts.length === 0 ? (
             /* Empty State */
             <View style={styles.emptyState}>
               <View style={styles.emptyIconContainer}>
@@ -79,10 +126,10 @@ export default function GeneralEmergencyActiveModal({
               </Text>
             </View>
           ) : (
-            /* Future Contacts List */
+            /* Contacts List */
             <FlatList
               data={contacts}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.contactId}
               renderItem={renderContactItem}
               contentContainerStyle={styles.listContainer}
               showsVerticalScrollIndicator={false}
@@ -91,7 +138,7 @@ export default function GeneralEmergencyActiveModal({
         </View>
 
         {/* Bottom Actions */}
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={onClose}
@@ -133,6 +180,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     marginBottom: 20,
+  },
+  spinnerWrapper: {
+    flex: 0.8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 0.8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   emptyState: {
     flex: 0.8,
@@ -181,17 +245,49 @@ const styles = StyleSheet.create({
   },
   contactInfo: {
     flex: 1,
+    gap: 6,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   contactName: {
     fontSize: 16,
     fontWeight: '800',
     color: '#FFFFFF',
   },
+  relationBadge: {
+    backgroundColor: 'rgba(255, 59, 48, 0.12)',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.25)',
+  },
+  relationBadgeText: {
+    color: '#FF3B30',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   contactPhone: {
     fontSize: 13,
     fontWeight: '600',
     color: '#8E8E93',
+  },
+  statusRow: {
     marginTop: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statusRegistered: {
+    color: '#34C759',
+  },
+  statusExternal: {
+    color: '#8E8E93',
   },
   callContactBtn: {
     width: 44,
