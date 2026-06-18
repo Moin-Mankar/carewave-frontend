@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,8 +7,9 @@ import {
   BackHandler,
   Dimensions,
   StatusBar,
+  ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -33,7 +34,9 @@ const getInitials = (name: string): string => {
 };
 
 export default function FakeCallScreen({ callerName, onEndCall }: FakeCallScreenProps) {
+  const insets = useSafeAreaInsets();
   const [seconds, setSeconds] = useState(0);
+  const callTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Dialer button states (visual toggle feedback)
   const [isMuted, setIsMuted] = useState(false);
@@ -65,12 +68,26 @@ export default function FakeCallScreen({ callerName, onEndCall }: FakeCallScreen
 
   // Update timer every second
   useEffect(() => {
-    const intervalId = setInterval(() => {
+    callTimerRef.current = setInterval(() => {
       setSeconds((prev) => prev + 1);
     }, 1000);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+        callTimerRef.current = null;
+      }
+    };
   }, []);
+
+  const handleEndCall = () => {
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+      callTimerRef.current = null;
+    }
+    setSeconds(0);
+    onEndCall();
+  };
 
   // Format seconds to MM:SS string
   const formatTimer = (totalSeconds: number): string => {
@@ -105,7 +122,7 @@ export default function FakeCallScreen({ callerName, onEndCall }: FakeCallScreen
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B131E" />
       
       {/* Top section: Caller details (always visible) */}
@@ -114,7 +131,7 @@ export default function FakeCallScreen({ callerName, onEndCall }: FakeCallScreen
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
 
-        <Text style={styles.callerName} numberOfLines={1}>
+        <Text style={styles.callerName} numberOfLines={1} ellipsizeMode="tail">
           {callerName}
         </Text>
         
@@ -232,46 +249,53 @@ export default function FakeCallScreen({ callerName, onEndCall }: FakeCallScreen
             </View>
           </View>
         ) : (
-          <View style={styles.keypadContainer}>
-            {/* Keypad Display area */}
-            <View style={styles.keypadDisplayRow}>
-              <Text style={styles.keypadDisplayText} numberOfLines={1} ellipsizeMode="head">
-                {enteredDigits || ' '}
-              </Text>
-              {enteredDigits.length > 0 && (
-                <TouchableOpacity onPress={handleBackspace} style={styles.backspaceButton}>
-                  <MaterialCommunityIcons name="backspace-outline" size={24} color="#A0B0C0" />
-                </TouchableOpacity>
-              )}
-            </View>
+          <ScrollView
+            style={styles.keypadScroll}
+            contentContainerStyle={styles.keypadScrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+          >
+            <View style={styles.keypadContainer}>
+              {/* Keypad Display area */}
+              <View style={styles.keypadDisplayRow}>
+                <Text style={styles.keypadDisplayText} numberOfLines={1} ellipsizeMode="head">
+                  {enteredDigits || ' '}
+                </Text>
+                {enteredDigits.length > 0 && (
+                  <TouchableOpacity onPress={handleBackspace} style={styles.backspaceButton}>
+                    <MaterialCommunityIcons name="backspace-outline" size={24} color="#A0B0C0" />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-            {/* Dial Keys */}
-            <View style={styles.dialPadRow}>
-              {renderDialKey('1', '')}
-              {renderDialKey('2', 'ABC')}
-              {renderDialKey('3', 'DEF')}
+              {/* Dial Keys */}
+              <View style={styles.dialPadRow}>
+                {renderDialKey('1', '')}
+                {renderDialKey('2', 'ABC')}
+                {renderDialKey('3', 'DEF')}
+              </View>
+              <View style={styles.dialPadRow}>
+                {renderDialKey('4', 'GHI')}
+                {renderDialKey('5', 'JKL')}
+                {renderDialKey('6', 'MNO')}
+              </View>
+              <View style={styles.dialPadRow}>
+                {renderDialKey('7', 'PQRS')}
+                {renderDialKey('8', 'TUV')}
+                {renderDialKey('9', 'WXYZ')}
+              </View>
+              <View style={styles.dialPadRow}>
+                {renderDialKey('*', '')}
+                {renderDialKey('0', '+')}
+                {renderDialKey('#', '')}
+              </View>
             </View>
-            <View style={styles.dialPadRow}>
-              {renderDialKey('4', 'GHI')}
-              {renderDialKey('5', 'JKL')}
-              {renderDialKey('6', 'MNO')}
-            </View>
-            <View style={styles.dialPadRow}>
-              {renderDialKey('7', 'PQRS')}
-              {renderDialKey('8', 'TUV')}
-              {renderDialKey('9', 'WXYZ')}
-            </View>
-            <View style={styles.dialPadRow}>
-              {renderDialKey('*', '')}
-              {renderDialKey('0', '+')}
-              {renderDialKey('#', '')}
-            </View>
-          </View>
+          </ScrollView>
         )}
       </View>
 
       {/* Bottom section: Primary call actions (always visible) */}
-      <View style={styles.bottomSection}>
+      <View style={[styles.bottomSection, { paddingBottom: Math.max(insets.bottom + 20, 36) }]}>
         <View style={styles.bottomRow}>
           {/* Speaker (Toggles) */}
           <View style={styles.bottomActionWrapper}>
@@ -291,7 +315,7 @@ export default function FakeCallScreen({ callerName, onEndCall }: FakeCallScreen
 
           {/* End Call (Disconnects) */}
           <TouchableOpacity
-            onPress={onEndCall}
+            onPress={handleEndCall}
             style={styles.endCallButtonCircle}
             activeOpacity={0.8}
           >
@@ -325,7 +349,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B131E', // Android Dialing deep dark blue-grey
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SCREEN_HEIGHT * 0.04,
   },
   topSection: {
     alignItems: 'center',
@@ -357,6 +380,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 6,
     letterSpacing: 0.5,
+    maxWidth: '90%',
   },
   statusText: {
     fontSize: 13,
@@ -420,7 +444,16 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 24,
     alignItems: 'center',
-    marginBottom: SCREEN_HEIGHT * 0.04,
+  },
+  keypadScroll: {
+    width: '100%',
+    flex: 1,
+  },
+  keypadScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 20, // Keep proper spacing above bottom actions
   },
   bottomRow: {
     flexDirection: 'row',

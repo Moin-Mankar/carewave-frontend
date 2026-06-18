@@ -12,9 +12,12 @@ import FakeCallSetupScreen from './src/screens/FakeCallSetupScreen';
 import FakeCallScreen from './src/screens/FakeCallScreen';
 import AIAssistantScreen from './src/screens/AIAssistantScreen';
 import SafetyCheckInScreen from './src/screens/SafetyCheckInScreen';
+import IncomingCallScreen from './src/screens/IncomingCallScreen';
+import GeoFenceScreen from './src/screens/GeoFenceScreen';
 import { getAuthData } from './src/services/storageService';
+import { startGeofenceMonitoring, stopGeofenceMonitoring } from './src/services/geofenceMonitoringService';
 
-type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL' | 'AI_ASSISTANT' | 'SAFETY_CHECK_IN';
+type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL' | 'AI_ASSISTANT' | 'SAFETY_CHECK_IN' | 'INCOMING_CALL' | 'GEOFENCE';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('LOADING');
@@ -24,6 +27,30 @@ export default function App() {
   const [fakeCallerName, setFakeCallerName] = useState('');
   const [pendingEmergencyType, setPendingEmergencyType] = useState<'MEDICAL' | 'POLICE' | 'OTHER' | null>(null);
   const [isCheckInTrigger, setIsCheckInTrigger] = useState(false);
+  
+  // Timer reference for scheduling fake calls
+  const fakeCallTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Clear timers on component unmount
+  useEffect(() => {
+    return () => {
+      if (fakeCallTimerRef.current) {
+        clearTimeout(fakeCallTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Manage GeoFence monitoring lifecycle based on active authentication session
+  useEffect(() => {
+    if (firstName) {
+      startGeofenceMonitoring();
+    } else {
+      stopGeofenceMonitoring();
+    }
+    return () => {
+      stopGeofenceMonitoring();
+    };
+  }, [firstName]);
 
   // App session restore check on startup
   useEffect(() => {
@@ -114,6 +141,9 @@ export default function App() {
               onNavigateToSafetyCheckIn={() => {
                 setCurrentScreen('SAFETY_CHECK_IN');
               }}
+              onNavigateToGeoFence={() => {
+                setCurrentScreen('GEOFENCE');
+              }}
               pendingEmergencyType={pendingEmergencyType}
               isCheckInTrigger={isCheckInTrigger}
               onClearPendingEmergency={() => {
@@ -136,9 +166,24 @@ export default function App() {
               onNavigateBack={() => {
                 setCurrentScreen('HOME');
               }}
-              onStartCall={(callerName) => {
+              onStartCall={(callerName, delaySeconds) => {
                 setFakeCallerName(callerName);
-                setCurrentScreen('FAKE_CALL');
+                
+                // Clear any existing scheduled call
+                if (fakeCallTimerRef.current) {
+                  clearTimeout(fakeCallTimerRef.current);
+                  fakeCallTimerRef.current = null;
+                }
+
+                if (delaySeconds > 0) {
+                  setCurrentScreen('HOME');
+                  fakeCallTimerRef.current = setTimeout(() => {
+                    fakeCallTimerRef.current = null;
+                    setCurrentScreen('INCOMING_CALL');
+                  }, delaySeconds * 1000);
+                } else {
+                  setCurrentScreen('INCOMING_CALL');
+                }
               }}
             />
           )}
@@ -166,6 +211,25 @@ export default function App() {
               onTriggerEmergency={(type) => {
                 setPendingEmergencyType(type);
                 setIsCheckInTrigger(true);
+                setCurrentScreen('HOME');
+              }}
+            />
+          )}
+          {currentScreen === 'INCOMING_CALL' && (
+            <IncomingCallScreen
+              callerName={fakeCallerName}
+              onAccept={() => {
+                setCurrentScreen('FAKE_CALL');
+              }}
+              onDecline={() => {
+                setFakeCallerName('');
+                setCurrentScreen('HOME');
+              }}
+            />
+          )}
+          {currentScreen === 'GEOFENCE' && (
+            <GeoFenceScreen
+              onNavigateBack={() => {
                 setCurrentScreen('HOME');
               }}
             />

@@ -22,7 +22,7 @@ const randomCallers = [
   "Priya Singh",
   "Aman Gujjar",
   "Neha Verma",
-  "Saish Sanas 67(DON)",
+  "Saish Sanas",
   "Sneha Kulkarni",
   "Prabhas Joshi",
   "Shruti Gupta"
@@ -30,7 +30,7 @@ const randomCallers = [
 
 interface FakeCallSetupScreenProps {
   onNavigateBack: () => void;
-  onStartCall: (callerName: string) => void;
+  onStartCall: (callerName: string, delaySeconds: number) => void;
 }
 
 type CallerType = 'MOTHER' | 'FATHER' | 'RANDOM' | 'CUSTOM';
@@ -39,6 +39,7 @@ export default function FakeCallSetupScreen({ onNavigateBack, onStartCall }: Fak
   const [selectedType, setSelectedType] = useState<CallerType>('MOTHER');
   const [customName, setCustomName] = useState('');
   const [errorText, setErrorText] = useState('');
+  const [selectedDelay, setSelectedDelay] = useState<number>(5); // Default to 5 seconds
 
   // Handle Android Back press to return to Home screen
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function FakeCallSetupScreen({ onNavigateBack, onStartCall }: Fak
       finalName = customName.trim();
     }
 
-    onStartCall(finalName);
+    onStartCall(finalName, selectedDelay);
   };
 
   const handleTypeSelect = (type: CallerType) => {
@@ -224,6 +225,47 @@ export default function FakeCallSetupScreen({ onNavigateBack, onStartCall }: Fak
                 {!!errorText && <Text style={styles.errorLabel}>{errorText}</Text>}
               </View>
             )}
+
+            <View style={{ height: 16 }} />
+
+            {/* Delay Selection Section */}
+            <Text style={styles.sectionTitle}>Call Delay</Text>
+            <Text style={styles.sectionSubtitle}>
+              Choose the delay time before the incoming call begins.
+            </Text>
+            <View style={styles.delayContainer}>
+              <TouchableOpacity
+                style={[styles.delayCard, selectedDelay === 0 && styles.delayCardSelected]}
+                onPress={() => setSelectedDelay(0)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.delayText}>Instant</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.delayCard, selectedDelay === 5 && styles.delayCardSelected]}
+                onPress={() => setSelectedDelay(5)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.delayText}>5 Sec</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.delayCard, selectedDelay === 10 && styles.delayCardSelected]}
+                onPress={() => setSelectedDelay(10)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.delayText}>10 Sec</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.delayCard, selectedDelay === 30 && styles.delayCardSelected]}
+                onPress={() => setSelectedDelay(30)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.delayText}>30 Sec</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Start button footer */}
@@ -383,5 +425,30 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 24,
     marginTop: 20,
+  },
+  delayContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 8,
+  },
+  delayCard: {
+    flex: 1,
+    backgroundColor: '#1C1C1E',
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  delayCardSelected: {
+    borderColor: '#FF5252',
+    backgroundColor: 'rgba(255, 82, 82, 0.04)',
+  },
+  delayText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

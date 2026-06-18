@@ -53,6 +53,7 @@ interface HomeScreenProps {
   onNavigateToFakeCallSetup: () => void;
   onNavigateToAIAssistant: () => void;
   onNavigateToSafetyCheckIn: () => void;
+  onNavigateToGeoFence: () => void;
   pendingEmergencyType: 'MEDICAL' | 'POLICE' | 'OTHER' | null;
   isCheckInTrigger: boolean;
   onClearPendingEmergency: () => void;
@@ -66,6 +67,7 @@ export default function HomeScreen({
   onNavigateToFakeCallSetup,
   onNavigateToAIAssistant,
   onNavigateToSafetyCheckIn,
+  onNavigateToGeoFence,
   pendingEmergencyType,
   isCheckInTrigger,
   onClearPendingEmergency,
@@ -730,25 +732,21 @@ export default function HomeScreen({
               <SOSButton onPress={handleSOSPress} />
             </View>
 
-            {/* AI Threat Detection Card */}
+            {/* GeoFence Monitoring Card */}
             <Pressable
               style={styles.aiCard}
-              onPress={() => Alert.alert('AI Threat Detection', 'CareWave safety algorithm is scanning device telemetry.')}
+              onPress={onNavigateToGeoFence}
             >
               <View style={styles.aiLeftRow}>
                 <View style={styles.aiIconBox}>
-                  <MaterialCommunityIcons name="brain" size={24} color="#FF5252" />
+                  <MaterialCommunityIcons name="map-marker-radius" size={24} color="#FF5252" />
                 </View>
                 <View>
-                  <Text style={styles.aiTitle}>AI Threat Detection</Text>
-                  <Text style={styles.aiSubtitle}>Monitoring for unusual activity</Text>
+                  <Text style={styles.aiTitle}>GeoFence Monitoring</Text>
+                  <Text style={styles.aiSubtitle}>Create and monitor safe zones</Text>
                 </View>
               </View>
               <View style={styles.aiRightRow}>
-                <View style={styles.aiStatusBadge}>
-                  <View style={styles.aiDot} />
-                  <Text style={styles.aiStatusText}>Active</Text>
-                </View>
                 <Feather name="chevron-right" size={20} color="#8E8E93" />
               </View>
             </Pressable>
