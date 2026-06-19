@@ -55,6 +55,7 @@ interface HomeScreenProps {
   onNavigateToSafetyCheckIn: () => void;
   onNavigateToGeoFence: () => void;
   onNavigateToEmergencyContacts: () => void;
+  onNavigateToHospitals: () => void;
   pendingEmergencyType: 'MEDICAL' | 'POLICE' | 'OTHER' | null;
   isCheckInTrigger: boolean;
   onClearPendingEmergency: () => void;
@@ -70,6 +71,7 @@ export default function HomeScreen({
   onNavigateToSafetyCheckIn,
   onNavigateToGeoFence,
   onNavigateToEmergencyContacts,
+  onNavigateToHospitals,
   pendingEmergencyType,
   isCheckInTrigger,
   onClearPendingEmergency,
@@ -607,7 +609,7 @@ export default function HomeScreen({
 
   const handleNearbyHospitalsPress = () => {
     console.log('[Quick Action] Nearby Hospitals pressed.');
-    Alert.alert('Nearby Responders', 'Hospital dispatch network search initiated.');
+    onNavigateToHospitals();
   };
 
   const handleAIAssistantPress = () => {

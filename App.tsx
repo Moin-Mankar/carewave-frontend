@@ -15,10 +15,11 @@ import SafetyCheckInScreen from './src/screens/SafetyCheckInScreen';
 import IncomingCallScreen from './src/screens/IncomingCallScreen';
 import GeoFenceScreen from './src/screens/GeoFenceScreen';
 import EmergencyContactsScreen from './src/screens/EmergencyContactsScreen';
+import HospitalsScreen from './src/screens/HospitalsScreen';
 import { getAuthData } from './src/services/storageService';
 import { startGeofenceMonitoring, stopGeofenceMonitoring } from './src/services/geofenceMonitoringService';
 
-type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL' | 'AI_ASSISTANT' | 'SAFETY_CHECK_IN' | 'INCOMING_CALL' | 'GEOFENCE' | 'EMERGENCY_CONTACTS';
+type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL' | 'AI_ASSISTANT' | 'SAFETY_CHECK_IN' | 'INCOMING_CALL' | 'GEOFENCE' | 'EMERGENCY_CONTACTS' | 'HOSPITALS';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('LOADING');
@@ -148,6 +149,9 @@ export default function App() {
               onNavigateToEmergencyContacts={() => {
                 setCurrentScreen('EMERGENCY_CONTACTS');
               }}
+              onNavigateToHospitals={() => {
+                setCurrentScreen('HOSPITALS');
+              }}
               pendingEmergencyType={pendingEmergencyType}
               isCheckInTrigger={isCheckInTrigger}
               onClearPendingEmergency={() => {
@@ -240,6 +244,13 @@ export default function App() {
           )}
           {currentScreen === 'EMERGENCY_CONTACTS' && (
             <EmergencyContactsScreen
+              onNavigateBack={() => {
+                setCurrentScreen('HOME');
+              }}
+            />
+          )}
+          {currentScreen === 'HOSPITALS' && (
+            <HospitalsScreen
               onNavigateBack={() => {
                 setCurrentScreen('HOME');
               }}
