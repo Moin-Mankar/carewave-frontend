@@ -56,6 +56,7 @@ interface HomeScreenProps {
   onNavigateToGeoFence: () => void;
   onNavigateToEmergencyContacts: () => void;
   onNavigateToHospitals: () => void;
+  onNavigateToSafetyMap: () => void;
   pendingEmergencyType: 'MEDICAL' | 'POLICE' | 'OTHER' | null;
   isCheckInTrigger: boolean;
   onClearPendingEmergency: () => void;
@@ -72,6 +73,7 @@ export default function HomeScreen({
   onNavigateToGeoFence,
   onNavigateToEmergencyContacts,
   onNavigateToHospitals,
+  onNavigateToSafetyMap,
   pendingEmergencyType,
   isCheckInTrigger,
   onClearPendingEmergency,
@@ -797,10 +799,10 @@ export default function HomeScreen({
                   onPress={handleNearbyHospitalsPress}
                 />
                 <QuickActionCard
-                  title="AI Assistant"
-                  subtitle="In development"
-                  icon="message-square"
-                  onPress={() => Alert.alert('Coming Soon', 'This feature is currently under development.')}
+                  title="Safety Map"
+                  subtitle="Nearby emergency resources"
+                  icon="map"
+                  onPress={onNavigateToSafetyMap}
                 />
               </View>
             </View>
