@@ -1066,6 +1066,10 @@ export default function HomeScreen({
       <EmergencyActiveModal
         visible={showActiveModal}
         onClose={handleCloseActiveHospitals}
+        onNavigateToContacts={() => {
+          handleCloseActiveHospitals();
+          setShowGeneralEmergencyActiveModal(true);
+        }}
       />
 
       <EmergencyCancelModal
@@ -1100,6 +1104,10 @@ export default function HomeScreen({
       <PoliceActiveModal
         visible={showPoliceActiveModal}
         onClose={() => setShowPoliceActiveModal(false)}
+        onNavigateToContacts={() => {
+          setShowPoliceActiveModal(false);
+          setShowGeneralEmergencyActiveModal(true);
+        }}
       />
 
       <FireSeverityModal
@@ -1111,6 +1119,10 @@ export default function HomeScreen({
       <FireActiveModal
         visible={showFireActiveModal}
         onClose={() => setShowFireActiveModal(false)}
+        onNavigateToContacts={() => {
+          setShowFireActiveModal(false);
+          setShowGeneralEmergencyActiveModal(true);
+        }}
       />
 
       <PersonalSafetySelectionModal
@@ -1123,6 +1135,10 @@ export default function HomeScreen({
         visible={showPersonalSafetyActiveModal}
         selectedSafetyType={selectedSafetyType}
         onClose={() => setShowPersonalSafetyActiveModal(false)}
+        onNavigateToContacts={() => {
+          setShowPersonalSafetyActiveModal(false);
+          setShowGeneralEmergencyActiveModal(true);
+        }}
       />
 
       <GeneralEmergencyActiveModal

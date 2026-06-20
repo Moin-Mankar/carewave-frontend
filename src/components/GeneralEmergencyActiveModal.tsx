@@ -53,6 +53,12 @@ export default function GeneralEmergencyActiveModal({
     );
   };
 
+  const notifiedCount = contacts.filter((c) => c.linkedToRegisteredUser).length;
+  const phoneCount = contacts.filter((c) => !c.linkedToRegisteredUser).length;
+
+  const notifiedText = notifiedCount === 1 ? '1 Contact Notified' : `${notifiedCount} Contacts Notified`;
+  const phoneText = phoneCount === 1 ? '1 Phone Contact Available' : `${phoneCount} Phone Contacts Available`;
+
   const renderContactItem = ({ item }: { item: EmergencyContact }) => {
     const isRegistered = item.linkedToRegisteredUser;
     const relationFormatted = item.relation
@@ -60,7 +66,7 @@ export default function GeneralEmergencyActiveModal({
       : '';
 
     return (
-      <View style={styles.contactCard}>
+      <View style={[styles.contactCard, isRegistered ? styles.contactCardNotified : styles.contactCardPhoneOnly]}>
         <View style={styles.contactInfo}>
           <View style={styles.nameRow}>
             <Text style={styles.contactName}>{item.fullName}</Text>
@@ -73,7 +79,12 @@ export default function GeneralEmergencyActiveModal({
           <Text style={styles.contactPhone}>{item.contactNumber}</Text>
           <View style={styles.statusRow}>
             <Text style={[styles.statusText, isRegistered ? styles.statusRegistered : styles.statusExternal]}>
-              {isRegistered ? '🟢 CareWave User' : '⚪ External Contact'}
+              {isRegistered ? '🟢 Receives CareWave Alerts' : '⚪ Phone Contact Only'}
+            </Text>
+            <Text style={styles.statusHelperText}>
+              {isRegistered
+                ? 'Will receive notifications and live tracking updates.'
+                : 'Available for direct calling but does not receive app alerts.'}
             </Text>
           </View>
         </View>
@@ -98,12 +109,27 @@ export default function GeneralEmergencyActiveModal({
       <SafeAreaView style={styles.container}>
         {/* Main Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>🌐 GENERAL EMERGENCY ACTIVE</Text>
+          <Text style={styles.headerTitle}>🚨 EMERGENCY CONTACTS</Text>
+          <Text style={styles.headerSubtitle}>
+            Review who received this alert and who can be contacted by phone.
+          </Text>
         </View>
 
         {/* Content Section */}
         <View style={styles.content}>
-          <Text style={styles.sectionTitle}>Emergency Contacts</Text>
+          {!loading && !error && contacts.length > 0 && (
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Alert Status</Text>
+              <View style={styles.summaryRow}>
+                <MaterialCommunityIcons name="check-circle" size={16} color="#30D158" />
+                <Text style={styles.summaryText}>{notifiedText}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <MaterialCommunityIcons name="phone" size={16} color="#8E8E93" />
+                <Text style={styles.summaryText}>{phoneText}</Text>
+              </View>
+            </View>
+          )}
 
           {loading ? (
             <View style={styles.spinnerWrapper}>
@@ -120,10 +146,7 @@ export default function GeneralEmergencyActiveModal({
               <View style={styles.emptyIconContainer}>
                 <MaterialCommunityIcons name="account-multiple-remove-outline" size={64} color="#8E8E93" />
               </View>
-              <Text style={styles.emptyTextTitle}>No emergency contacts available</Text>
-              <Text style={styles.emptyTextSubtitle}>
-                Add emergency contacts to enable quick calling during emergencies.
-              </Text>
+              <Text style={styles.emptyTextTitle}>No emergency contacts available.</Text>
             </View>
           ) : (
             /* Contacts List */
@@ -170,16 +193,45 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 6,
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 16,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
   },
-  sectionTitle: {
-    fontSize: 18,
+  summaryCard: {
+    backgroundColor: '#1C1C1E',
+    borderWidth: 1.5,
+    borderColor: '#2C2C2E',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+  },
+  summaryTitle: {
+    fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom: 20,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginVertical: 4,
+  },
+  summaryText: {
+    fontSize: 13,
+    color: '#E5E5EA',
+    fontWeight: '600',
   },
   spinnerWrapper: {
     flex: 0.8,
@@ -222,13 +274,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
-  emptyTextSubtitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#8E8E93',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   listContainer: {
     gap: 12,
     paddingBottom: 20,
@@ -238,10 +283,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#1C1C1E',
-    borderWidth: 1.5,
-    borderColor: '#2C2C2E',
     borderRadius: 16,
     padding: 16,
+  },
+  contactCardNotified: {
+    borderColor: 'rgba(52, 199, 89, 0.4)',
+    borderWidth: 1.5,
+  },
+  contactCardPhoneOnly: {
+    borderColor: '#2C2C2E',
+    borderWidth: 1.5,
   },
   contactInfo: {
     flex: 1,
@@ -281,10 +332,17 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  statusHelperText: {
+    fontSize: 11,
+    color: '#8E8E93',
+    marginTop: 2,
+    fontWeight: '400',
+    lineHeight: 15,
   },
   statusRegistered: {
-    color: '#34C759',
+    color: '#30D158',
   },
   statusExternal: {
     color: '#8E8E93',

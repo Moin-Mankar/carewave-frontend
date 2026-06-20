@@ -19,9 +19,10 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface EmergencyActiveModalProps {
   visible: boolean;
   onClose: () => void;
+  onNavigateToContacts?: () => void;
 }
 
-export default function EmergencyActiveModal({ visible, onClose }: EmergencyActiveModalProps) {
+export default function EmergencyActiveModal({ visible, onClose, onNavigateToContacts }: EmergencyActiveModalProps) {
   const insets = useSafeAreaInsets();
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -331,6 +332,15 @@ export default function EmergencyActiveModal({ visible, onClose }: EmergencyActi
             <MaterialCommunityIcons name="phone" size={24} color="#FFFFFF" />
             <Text style={styles.ambulanceBtnText}>CALL AMBULANCE (108)</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onNavigateToContacts}
+            style={styles.contactsBtn}
+          >
+            <MaterialCommunityIcons name="account-multiple" size={24} color="#FF5252" />
+            <Text style={styles.contactsBtnText}>EMERGENCY CONTACTS</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </Modal>
@@ -518,6 +528,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C1C1E',
     borderTopWidth: 1,
     borderTopColor: '#2C2C2E',
+    gap: 12,
   },
   ambulanceBtn: {
     backgroundColor: '#D32F2F',
@@ -534,6 +545,23 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   ambulanceBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  contactsBtn: {
+    backgroundColor: '#1C1C1E',
+    height: 54,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#D32F2F',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+  },
+  contactsBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '900',

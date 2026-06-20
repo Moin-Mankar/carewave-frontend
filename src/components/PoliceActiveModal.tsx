@@ -6,6 +6,7 @@ import {
   Modal,
   TouchableOpacity,
   Linking,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,9 +14,10 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 interface PoliceActiveModalProps {
   visible: boolean;
   onClose: () => void;
+  onNavigateToContacts?: () => void;
 }
 
-export default function PoliceActiveModal({ visible, onClose }: PoliceActiveModalProps) {
+export default function PoliceActiveModal({ visible, onClose, onNavigateToContacts }: PoliceActiveModalProps) {
   const insets = useSafeAreaInsets();
   const handleCallPolice = () => {
     Linking.openURL('tel:100').catch((err) => console.error('Error opening dialer:', err));
@@ -37,8 +39,12 @@ export default function PoliceActiveModal({ visible, onClose }: PoliceActiveModa
           <Text style={styles.headerTitle}>POLICE ASSISTANCE</Text>
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
+        {/* Content wrapping with ScrollView to fix hidden card layout bug */}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.iconContainer}>
             <MaterialCommunityIcons name="shield-star" size={80} color="#FF5252" />
           </View>
@@ -69,7 +75,7 @@ export default function PoliceActiveModal({ visible, onClose }: PoliceActiveModa
               </View>
             </View>
           </View>
-        </View>
+        </ScrollView>
 
         {/* Actions */}
         <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -84,10 +90,11 @@ export default function PoliceActiveModal({ visible, onClose }: PoliceActiveModa
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={onClose}
+            onPress={onNavigateToContacts}
             style={styles.dismissBtn}
           >
-            <Text style={styles.dismissBtnText}>DISMISS</Text>
+            <MaterialCommunityIcons name="account-multiple" size={20} color="#E5E5EA" style={{ marginRight: 8 }} />
+            <Text style={styles.dismissBtnText}>EMERGENCY CONTACTS</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -124,11 +131,13 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     color: '#FFFFFF',
   },
-  content: {
+  scroll: {
     flex: 1,
+  },
+  scrollContent: {
     alignItems: 'center',
     padding: 24,
-    justifyContent: 'center',
+    paddingBottom: 40,
   },
   iconContainer: {
     width: 140,
@@ -221,13 +230,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: '#3A3A3C',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   dismissBtnText: {
     color: '#E5E5EA',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.5,
   },
 });

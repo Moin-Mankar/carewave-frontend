@@ -6,25 +6,29 @@ import {
   Modal,
   TouchableOpacity,
   Linking,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface PersonalSafetyActiveModalProps {
   visible: boolean;
   selectedSafetyType: 'WOMEN' | 'CHILD' | null;
   onClose: () => void;
+  onNavigateToContacts?: () => void;
 }
 
 export default function PersonalSafetyActiveModal({
   visible,
   selectedSafetyType,
   onClose,
+  onNavigateToContacts,
 }: PersonalSafetyActiveModalProps) {
   const insets = useSafeAreaInsets();
   const isWomen = selectedSafetyType === 'WOMEN';
 
   const title = isWomen ? '🛡 WOMEN SAFETY ALERT ACTIVE' : '🛡 CHILD SAFETY ALERT ACTIVE';
+  const headerTitle = isWomen ? 'WOMEN SAFETY' : 'CHILD SAFETY';
   const subtitle = isWomen ? 'Women Safety Alert Active' : 'Child Safety Alert Active';
   const callBtnText = isWomen ? 'CALL WOMEN HELPLINE (1091)' : 'CALL CHILD HELPLINE (1098)';
   const phoneNumber = isWomen ? '1091' : '1098';
@@ -43,18 +47,30 @@ export default function PersonalSafetyActiveModal({
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.container}>
-        {/* Main Content */}
-        <View style={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{headerTitle}</Text>
+        </View>
+
+        {/* Content wrapping with ScrollView to fix layout bug */}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={[styles.iconContainer, { borderColor: `${themeColor}40`, backgroundColor: `${themeColor}15` }]}>
             <MaterialCommunityIcons name={iconName} size={80} color={themeColor} />
           </View>
 
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
+        </ScrollView>
 
         {/* Action Buttons */}
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={handleCallHelpline}
@@ -66,10 +82,11 @@ export default function PersonalSafetyActiveModal({
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={onClose}
+            onPress={onNavigateToContacts}
             style={styles.dismissBtn}
           >
-            <Text style={styles.dismissBtnText}>DISMISS</Text>
+            <MaterialCommunityIcons name="account-multiple" size={20} color="#E5E5EA" style={{ marginRight: 8 }} />
+            <Text style={styles.dismissBtnText}>EMERGENCY CONTACTS</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -82,11 +99,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0F0F11',
   },
-  content: {
-    flex: 1,
+  header: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1C1C1E',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginLeft: 12,
+    color: '#FFFFFF',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    alignItems: 'center',
+    padding: 24,
+    paddingBottom: 40,
   },
   iconContainer: {
     width: 140,
@@ -145,6 +188,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: '#3A3A3C',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
