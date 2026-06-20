@@ -58,6 +58,7 @@ interface HomeScreenProps {
   onNavigateToHospitals: () => void;
   onNavigateToSafetyMap: () => void;
   onNavigateToAlerts: () => void;
+  onNavigateToProfile: () => void;
   pendingEmergencyType: 'MEDICAL' | 'POLICE' | 'OTHER' | null;
   isCheckInTrigger: boolean;
   onClearPendingEmergency: () => void;
@@ -76,6 +77,7 @@ export default function HomeScreen({
   onNavigateToHospitals,
   onNavigateToSafetyMap,
   onNavigateToAlerts,
+  onNavigateToProfile,
   pendingEmergencyType,
   isCheckInTrigger,
   onClearPendingEmergency,
@@ -623,14 +625,8 @@ export default function HomeScreen({
 
   const handleTabPress = (tabName: string) => {
     if (tabName === 'Profile') {
-      Alert.alert(
-        'Profile Sign Out',
-        'Would you like to sign out of the demo session?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign Out', style: 'destructive', onPress: handleSignOut }
-        ]
-      );
+      console.log('[Navigation] Tab Profile pressed. Navigating to Profile Dashboard.');
+      onNavigateToProfile();
     } else if (tabName === 'LOCATION') {
       setActiveTab(tabName);
       handleLiveTrackingPress();

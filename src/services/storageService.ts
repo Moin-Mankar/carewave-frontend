@@ -57,3 +57,41 @@ export async function clearAuthData(): Promise<void> {
     throw error;
   }
 }
+
+const SETTINGS_KEY = '@carewave_app_settings';
+
+export interface AppSettings {
+  notifications: boolean;
+  soundAlerts: boolean;
+  vibrationAlerts: boolean;
+}
+
+/**
+ * Saves frontend-only settings (notifications, sound, vibration switches) locally.
+ */
+export async function saveSettings(settings: AppSettings): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.error('[Storage] Error saving app settings:', error);
+  }
+}
+
+/**
+ * Retrieves local frontend settings, falling back to enabled by default.
+ */
+export async function getSettings(): Promise<AppSettings> {
+  try {
+    const json = await AsyncStorage.getItem(SETTINGS_KEY);
+    if (json) {
+      return JSON.parse(json);
+    }
+  } catch (error) {
+    console.error('[Storage] Error loading app settings:', error);
+  }
+  return {
+    notifications: true,
+    soundAlerts: true,
+    vibrationAlerts: true,
+  };
+}

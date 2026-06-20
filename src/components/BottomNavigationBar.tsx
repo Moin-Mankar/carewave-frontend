@@ -112,7 +112,7 @@ export default function BottomNavigationBar({ activeTab, onTabPress }: BottomNav
 const styles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 24 : 16,
+    bottom: Platform.OS === 'ios' ? 20 : 12, // Reduced bottom gap by ~15% for a sleeker fit
     left: 16,
     right: 16,
     alignItems: 'center',
@@ -121,19 +121,19 @@ const styles = StyleSheet.create({
   barContainer: {
     flexDirection: 'row',
     width: width - 32,
-    backgroundColor: '#1C1C1E',
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
+    backgroundColor: 'rgba(20, 20, 22, 0.95)', // Darkened background for better contrast and premium frosted feel
+    borderWidth: 1.2, // Slightly more defined border
+    borderColor: '#303036', // Enhanced border contrast against page content
     borderRadius: 24,
     height: 64,
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 6 }, // Smoother, deeper drop shadow
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
   tab: {
     alignItems: 'center',
@@ -158,12 +158,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 10, // Converted simple dot to a sleek active indicator pill
+    height: 3,
+    borderRadius: 1.5,
     backgroundColor: '#FF5252',
     position: 'absolute',
-    bottom: -6,
+    bottom: -4,
   },
   centerTabWrapper: {
     width: 76,
