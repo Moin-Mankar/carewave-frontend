@@ -22,6 +22,7 @@ import * as Network from 'expo-network';
 import { clearAuthData, getAuthData } from '../services/storageService';
 import { createMedicalEmergency, createEmergency, getFireConfiguration } from '../services/emergencyService';
 import { cancelAlert, resolveAlert, getActiveEmergency, ActiveEmergencyResponse, sendCurrentEmergencyLocation } from '../services/trackingService';
+import { getUnreadCount } from '../services/notificationService';
 import EmergencySuccessModal from '../components/EmergencySuccessModal';
 import EmergencyFailureModal from '../components/EmergencyFailureModal';
 import EmergencyActiveModal from '../components/EmergencyActiveModal';
@@ -59,6 +60,7 @@ interface HomeScreenProps {
   onNavigateToSafetyMap: () => void;
   onNavigateToAlerts: () => void;
   onNavigateToProfile: () => void;
+  onNavigateToNotifications: () => void;
   pendingEmergencyType: 'MEDICAL' | 'POLICE' | 'OTHER' | null;
   isCheckInTrigger: boolean;
   onClearPendingEmergency: () => void;
@@ -78,6 +80,7 @@ export default function HomeScreen({
   onNavigateToSafetyMap,
   onNavigateToAlerts,
   onNavigateToProfile,
+  onNavigateToNotifications,
   pendingEmergencyType,
   isCheckInTrigger,
   onClearPendingEmergency,
@@ -112,6 +115,30 @@ export default function HomeScreen({
   const [showCountdownOverlay, setShowCountdownOverlay] = useState(false);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Poll for unread notification count
+  useEffect(() => {
+    let active = true;
+    const fetchCount = async () => {
+      try {
+        const count = await getUnreadCount();
+        if (active) {
+          setUnreadCount(count);
+        }
+      } catch (error) {
+        console.error('[HomeScreen] Error fetching unread count:', error);
+      }
+    };
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 10000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // System status state variables
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
@@ -669,17 +696,14 @@ export default function HomeScreen({
                 <TouchableOpacity
                   activeOpacity={0.8}
                   style={styles.actionIconBtn}
-                  onPress={() => Alert.alert('Notifications', 'Monitoring dispatch notifications.')}
+                  onPress={onNavigateToNotifications}
                 >
                   <Feather name="bell" size={20} color="#FFFFFF" />
-                  <View style={styles.notificationDot} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.actionIconBtn}
-                  onPress={() => handleTabPress('Profile')}
-                >
-                  <Feather name="user" size={20} color="#FFFFFF" />
+                  {unreadCount > 0 && (
+                    <View style={styles.notificationBadge}>
+                      <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -1125,8 +1149,8 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     paddingHorizontal: 20,
-    paddingTop: SCREEN_HEIGHT < 700 ? 32 : 54,
-    paddingBottom: SCREEN_HEIGHT < 700 ? 28 : 46,
+    paddingTop: SCREEN_HEIGHT < 700 ? 25 : 42,
+    paddingBottom: SCREEN_HEIGHT < 700 ? 22 : 36,
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
   },
@@ -1176,6 +1200,26 @@ const styles = StyleSheet.create({
     right: 10,
     borderWidth: 1.5,
     borderColor: '#8E1C1C',
+  },
+  notificationBadge: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FF5252',
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    borderWidth: 1.5,
+    borderColor: '#8E1C1C',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   contentBody: {
     paddingHorizontal: 20,
