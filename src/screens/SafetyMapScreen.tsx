@@ -317,23 +317,23 @@ export default function SafetyMapScreen({ onNavigateBack }: SafetyMapScreenProps
 
           // Leaflet Custom Vector Icons
           var hospitalIcon = L.divIcon({
-            html: '<svg width="32" height="38" viewBox="0 0 32 38" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 0C7.16 0 0 7.16 0 16c0 10.66 14.25 21.14 15.22 21.84.47.34 1.09.34 1.56 0C17.75 37.14 32 26.66 32 16 32 7.16 24.84 0 16 0z" fill="#FF5252"/><circle cx="16" cy="14" r="8" fill="#FFFFFF"/><rect x="14.5" y="9.5" width="3" height="9" rx="0.5" fill="#FF5252"/><rect x="11.5" y="12.5" width="9" height="3" rx="0.5" fill="#FF5252"/></svg>',
-            iconSize: [32, 38],
-            iconAnchor: [16, 38],
+            html: '<svg width="28" height="34" viewBox="0 0 28 34" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 0C6.3 0 0 6.3 0 14c0 9.3 12.5 18.5 13.3 19.1.2.1.5.2.7.2s.5-.1.7-.2C15.5 32.5 28 23.3 28 14c0-7.7-6.3-14-14-14z" fill="#FF5252"/><rect x="12.5" y="9" width="3" height="10" rx="0.5" fill="#FFFFFF"/><rect x="9" y="12.5" width="10" height="3" rx="0.5" fill="#FFFFFF"/></svg>',
+            iconSize: [28, 34],
+            iconAnchor: [14, 34],
             className: 'custom-resource-marker'
           });
 
           var policeIcon = L.divIcon({
-            html: '<svg width="32" height="38" viewBox="0 0 32 38" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 0C7.16 0 0 7.16 0 16c0 10.66 14.25 21.14 15.22 21.84.47.34 1.09.34 1.56 0C17.75 37.14 32 26.66 32 16 32 7.16 24.84 0 16 0z" fill="#0A84FF"/><circle cx="16" cy="14" r="8" fill="#FFFFFF"/><path d="M16 9 L20.5 10.5 V14 C20.5 16.5 18.5 18.8 16 19.5 C13.5 18.8 11.5 16.5 11.5 14 V10.5 L16 9 Z" fill="#0A84FF"/></svg>',
-            iconSize: [32, 38],
-            iconAnchor: [16, 38],
+            html: '<svg width="28" height="34" viewBox="0 0 28 34" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 0C6.3 0 0 6.3 0 14c0 9.3 12.5 18.5 13.3 19.1.2.1.5.2.7.2s.5-.1.7-.2C15.5 32.5 28 23.3 28 14c0-7.7-6.3-14-14-14z" fill="#0A84FF"/><path d="M14 9 L18 10.3 V13.5 C18 15.7 16.2 17.7 14 18.3 C11.8 17.7 10 15.7 10 13.5 V10.3 L14 9 Z" fill="#FFFFFF"/></svg>',
+            iconSize: [28, 34],
+            iconAnchor: [14, 34],
             className: 'custom-resource-marker'
           });
 
           var fireIcon = L.divIcon({
-            html: '<svg width="32" height="38" viewBox="0 0 32 38" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 0C7.16 0 0 7.16 0 16c0 10.66 14.25 21.14 15.22 21.84.47.34 1.09.34 1.56 0C17.75 37.14 32 26.66 32 16 32 7.16 24.84 0 16 0z" fill="#FF9F0A"/><circle cx="16" cy="14" r="8" fill="#FFFFFF"/><path d="M16 8.5c-.3 0-3 2.5-3 5.5a3 3 0 0 0 6 0c0-3-2.7-5.5-3-5.5z" fill="#FF9F0A"/><path d="M16 11.5c-.1 0-1.5 1.2-1.5 2.7a1.5 1.5 0 0 0 3 0c0-1.5-1.4-2.7-1.5-2.7z" fill="#FFFFFF"/></svg>',
-            iconSize: [32, 38],
-            iconAnchor: [16, 38],
+            html: '<svg width="28" height="34" viewBox="0 0 28 34" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 0C6.3 0 0 6.3 0 14c0 9.3 12.5 18.5 13.3 19.1.2.1.5.2.7.2s.5-.1.7-.2C15.5 32.5 28 23.3 28 14c0-7.7-6.3-14-14-14z" fill="#FF9F0A"/><path d="M14 8.5c-.3 0-3 2.5-3 5.5a3 3 0 0 0 6 0c0-3-2.7-5.5-3-5.5z" fill="#FFFFFF"/><path d="M14 11.5c-.1 0-1.5 1.2-1.5 2.7a1.5 1.5 0 0 0 3 0c0-1.5-1.4-2.7-1.5-2.7z" fill="#FF9F0A"/></svg>',
+            iconSize: [28, 34],
+            iconAnchor: [14, 34],
             className: 'custom-resource-marker'
           });
 
@@ -362,13 +362,36 @@ export default function SafetyMapScreen({ onNavigateBack }: SafetyMapScreenProps
               return filterType === 'ALL' || r.type === filterType;
             });
 
+            // Offset overlapping coordinates slightly to prevent overlapping
+            var coordinateCounts = {};
             filtered.forEach(function(r) {
+              var latKey = r.lat.toFixed(5);
+              var lonKey = r.lon.toFixed(5);
+              var key = latKey + ',' + lonKey;
+              
+              var latOffset = 0;
+              var lonOffset = 0;
+              
+              if (coordinateCounts[key] !== undefined) {
+                coordinateCounts[key]++;
+                // Spiral offset algorithm
+                var angle = coordinateCounts[key] * 0.8;
+                var radius = 0.0001 * coordinateCounts[key];
+                latOffset = Math.sin(angle) * radius;
+                lonOffset = Math.cos(angle) * radius;
+              } else {
+                coordinateCounts[key] = 0;
+              }
+
+              var lat = r.lat + latOffset;
+              var lon = r.lon + lonOffset;
+
               var icon;
               if (r.type === 'HOSPITAL') icon = hospitalIcon;
               else if (r.type === 'POLICE') icon = policeIcon;
               else if (r.type === 'FIRE') icon = fireIcon;
 
-              var m = L.marker([r.lat, r.lon], { icon: icon }).addTo(map);
+              var m = L.marker([lat, lon], { icon: icon }).addTo(map);
               
               // Marker Tap Interaction
               m.on('click', function() {

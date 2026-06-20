@@ -57,6 +57,7 @@ interface HomeScreenProps {
   onNavigateToEmergencyContacts: () => void;
   onNavigateToHospitals: () => void;
   onNavigateToSafetyMap: () => void;
+  onNavigateToAlerts: () => void;
   pendingEmergencyType: 'MEDICAL' | 'POLICE' | 'OTHER' | null;
   isCheckInTrigger: boolean;
   onClearPendingEmergency: () => void;
@@ -74,6 +75,7 @@ export default function HomeScreen({
   onNavigateToEmergencyContacts,
   onNavigateToHospitals,
   onNavigateToSafetyMap,
+  onNavigateToAlerts,
   pendingEmergencyType,
   isCheckInTrigger,
   onClearPendingEmergency,
@@ -635,6 +637,9 @@ export default function HomeScreen({
     } else if (tabName === 'Contacts') {
       console.log('[Navigation] Tab Contacts pressed. Navigating to Emergency Contacts.');
       onNavigateToEmergencyContacts();
+    } else if (tabName === 'Alerts') {
+      console.log('[Navigation] Tab Alerts pressed. Navigating to Alerts Center.');
+      onNavigateToAlerts();
     } else {
       setActiveTab(tabName);
       console.log(`[Navigation] Tab ${tabName} pressed.`);

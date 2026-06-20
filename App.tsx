@@ -17,10 +17,11 @@ import GeoFenceScreen from './src/screens/GeoFenceScreen';
 import EmergencyContactsScreen from './src/screens/EmergencyContactsScreen';
 import HospitalsScreen from './src/screens/HospitalsScreen';
 import SafetyMapScreen from './src/screens/SafetyMapScreen';
+import AlertsScreen from './src/screens/AlertsScreen';
 import { getAuthData } from './src/services/storageService';
 import { startGeofenceMonitoring, stopGeofenceMonitoring } from './src/services/geofenceMonitoringService';
 
-type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL' | 'AI_ASSISTANT' | 'SAFETY_CHECK_IN' | 'INCOMING_CALL' | 'GEOFENCE' | 'EMERGENCY_CONTACTS' | 'HOSPITALS' | 'SAFETY_MAP';
+type Screen = 'LOADING' | 'PHONE_ENTRY' | 'OTP_VERIFICATION' | 'NEW_USER_ONBOARDING' | 'HOME' | 'LIVE_TRACKING_MAP' | 'FAKE_CALL_SETUP' | 'FAKE_CALL' | 'AI_ASSISTANT' | 'SAFETY_CHECK_IN' | 'INCOMING_CALL' | 'GEOFENCE' | 'EMERGENCY_CONTACTS' | 'HOSPITALS' | 'SAFETY_MAP' | 'ALERTS';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('LOADING');
@@ -156,6 +157,9 @@ export default function App() {
               onNavigateToSafetyMap={() => {
                 setCurrentScreen('SAFETY_MAP');
               }}
+              onNavigateToAlerts={() => {
+                setCurrentScreen('ALERTS');
+              }}
               pendingEmergencyType={pendingEmergencyType}
               isCheckInTrigger={isCheckInTrigger}
               onClearPendingEmergency={() => {
@@ -264,6 +268,17 @@ export default function App() {
             <SafetyMapScreen
               onNavigateBack={() => {
                 setCurrentScreen('HOME');
+              }}
+            />
+          )}
+          {currentScreen === 'ALERTS' && (
+            <AlertsScreen
+              onNavigateBack={() => {
+                setCurrentScreen('HOME');
+              }}
+              onNavigateToMap={(emergencyId) => {
+                setSelectedEmergencyId(emergencyId);
+                setCurrentScreen('LIVE_TRACKING_MAP');
               }}
             />
           )}
