@@ -117,7 +117,9 @@ export default function HomeScreen({
   const [elapsedTime, setElapsedTime] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Poll for unread notification count
+  const lastActiveRef = useRef<boolean | null>(null);
+
+  // Poll for unread notification count and active emergency status
   useEffect(() => {
     let active = true;
     const fetchCount = async () => {
@@ -128,6 +130,35 @@ export default function HomeScreen({
         }
       } catch (error) {
         console.error('[HomeScreen] Error fetching unread count:', error);
+      }
+
+      try {
+        const activeEm = await getActiveEmergency();
+        console.log('[LocationIndicator] Active emergency response:', JSON.stringify(activeEm));
+        
+        let isCurrentlyActive = false;
+        if (activeEm && typeof activeEm === 'object' && Object.keys(activeEm).length > 0 && activeEm.emergencyId && activeEm.emergencyStatus === 'ACTIVE') {
+          isCurrentlyActive = true;
+        }
+        if (!activeEm) {
+          isCurrentlyActive = false;
+        }
+
+        console.log('[LocationIndicator] Computed active state:', isCurrentlyActive);
+
+        if (active) {
+          setActiveEmergency(activeEm);
+          setLiveTrackingActive(isCurrentlyActive);
+
+          if (isCurrentlyActive && lastActiveRef.current !== true) {
+            console.log('[LocationIndicator] Status changed to ACTIVE');
+          } else if (!isCurrentlyActive && lastActiveRef.current === true) {
+            console.log('[LocationIndicator] Status changed to INACTIVE');
+          }
+          lastActiveRef.current = isCurrentlyActive;
+        }
+      } catch (error) {
+        console.warn('Error fetching active emergency:', error);
       }
     };
 
@@ -175,20 +206,7 @@ export default function HomeScreen({
       }
     }
 
-    async function checkActiveEmergency() {
-      try {
-        const active = await getActiveEmergency();
-        if (active) {
-          setActiveEmergency(active);
-          setLiveTrackingActive(true);
-        }
-      } catch (err) {
-        console.warn('Error fetching active emergency:', err);
-      }
-    }
-
     fetchSystemStatus();
-    checkActiveEmergency();
 
     const getFcmToken = async () => {
     try {
@@ -479,6 +497,7 @@ export default function HomeScreen({
       setShowCancelModal(true);
       setActiveEmergency(null);
       setLiveTrackingActive(false);
+      lastActiveRef.current = false;
     } catch (error) {
       setShowFailureModal(true);
     }
@@ -491,6 +510,7 @@ export default function HomeScreen({
       setShowResolveModal(true);
       setActiveEmergency(null);
       setLiveTrackingActive(false);
+      lastActiveRef.current = false;
     } catch (error) {
       setShowFailureModal(true);
     }
@@ -588,6 +608,7 @@ export default function HomeScreen({
 
       // Mark Live Tracking status as ACTIVE
       setLiveTrackingActive(true);
+      lastActiveRef.current = true;
 
       // Set active emergency state
       setActiveEmergency({
@@ -846,7 +867,11 @@ export default function HomeScreen({
         </ScrollView>
 
         {/* Floating Bottom Navigation */}
-        <BottomNavigationBar activeTab={activeTab} onTabPress={handleTabPress} />
+        <BottomNavigationBar 
+          activeTab={activeTab} 
+          onTabPress={handleTabPress} 
+          isTrackingActive={liveTrackingActive}
+        />
       </Animated.View>
 
       {/* Emergency Actions Bottom-Sheet Modal */}

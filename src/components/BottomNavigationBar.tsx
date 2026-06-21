@@ -7,9 +7,10 @@ const { width } = Dimensions.get('window');
 interface BottomNavigationBarProps {
   activeTab: string;
   onTabPress: (tabName: string) => void;
+  isTrackingActive?: boolean;
 }
 
-export default function BottomNavigationBar({ activeTab, onTabPress }: BottomNavigationBarProps) {
+export default function BottomNavigationBar({ activeTab, onTabPress, isTrackingActive = false }: BottomNavigationBarProps) {
   const tabs = [
     { name: 'Home', icon: 'home', type: 'Feather' },
     { name: 'Alerts', icon: 'bell', type: 'Feather' },
@@ -63,11 +64,17 @@ export default function BottomNavigationBar({ activeTab, onTabPress }: BottomNav
                   isSelected && styles.centerTabSelected,
                   { transform: [{ scale: currentScale }] }
                 ]}>
-                  <MaterialCommunityIcons
-                    name={tab.icon as any}
-                    size={28}
-                    color="#FFFFFF"
-                  />
+                  <View style={{ position: 'relative' }}>
+                    <MaterialCommunityIcons
+                      name={tab.icon as any}
+                      size={28}
+                      color="#FFFFFF"
+                    />
+                    <View style={[
+                      styles.statusDot,
+                      isTrackingActive ? styles.statusDotGreen : styles.statusDotRed
+                    ]} />
+                  </View>
                   <Text style={styles.centerTabText}>LOCATION</Text>
                 </Animated.View>
               </TouchableOpacity>
@@ -197,5 +204,21 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '900',
     marginTop: 2,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    borderWidth: 1.5,
+    borderColor: '#D32F2F',
+  },
+  statusDotGreen: {
+    backgroundColor: '#30D158',
+  },
+  statusDotRed: {
+    backgroundColor: '#FF3B30',
   },
 });

@@ -33,6 +33,8 @@ export default function App() {
   const [fakeCallerName, setFakeCallerName] = useState('');
   const [pendingEmergencyType, setPendingEmergencyType] = useState<'MEDICAL' | 'POLICE' | 'OTHER' | null>(null);
   const [isCheckInTrigger, setIsCheckInTrigger] = useState(false);
+  const [email, setEmail] = useState('');
+  const [userExists, setUserExists] = useState(false);
   
   // Timer reference for scheduling fake calls
   const fakeCallTimerRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -81,12 +83,15 @@ export default function App() {
     restoreSession();
   }, []);
 
-  const navigateToOtp = (phone: string) => {
+  const navigateToOtp = (phone: string, verifiedEmail: string, exists: boolean) => {
     setPhoneNumber(phone);
+    setEmail(verifiedEmail);
+    setUserExists(exists);
     setCurrentScreen('OTP_VERIFICATION');
   };
 
-  const navigateToOnboarding = () => {
+  const navigateToOnboarding = (verifiedEmail: string) => {
+    setEmail(verifiedEmail);
     setCurrentScreen('NEW_USER_ONBOARDING');
   };
 
@@ -98,6 +103,8 @@ export default function App() {
   const navigateToPhoneEntry = () => {
     setPhoneNumber('');
     setFirstName('');
+    setEmail('');
+    setUserExists(false);
     setCurrentScreen('PHONE_ENTRY');
   };
 
@@ -117,6 +124,8 @@ export default function App() {
           {currentScreen === 'OTP_VERIFICATION' && (
             <OTPVerificationScreen
               phoneNumber={phoneNumber}
+              email={email}
+              userExists={userExists}
               onNavigateBack={navigateToPhoneEntry}
               onNavigateToOnboarding={navigateToOnboarding}
               onNavigateToHome={navigateToHome}
@@ -125,6 +134,7 @@ export default function App() {
           {currentScreen === 'NEW_USER_ONBOARDING' && (
             <NewUserOnboardingScreen
               phoneNumber={phoneNumber}
+              email={email}
               onNavigateBack={() => setCurrentScreen('OTP_VERIFICATION')}
               onNavigateToHome={navigateToHome}
             />

@@ -48,12 +48,14 @@ const formatGenderLabel = (g: string) => {
 
 interface NewUserOnboardingScreenProps {
   phoneNumber: string;
+  email: string;
   onNavigateBack: () => void;
   onNavigateToHome: (firstName: string) => void;
 }
 
 export default function NewUserOnboardingScreen({
   phoneNumber,
+  email,
   onNavigateBack,
   onNavigateToHome,
 }: NewUserOnboardingScreenProps) {
@@ -85,7 +87,7 @@ export default function NewUserOnboardingScreen({
     try {
       console.log('[Onboarding] Triggering mobile-register API.');
       // Create user on backend
-      const authResponse = await mobileRegister(fullName, phoneNumber, bloodGroup, gender);
+      const authResponse = await mobileRegister(fullName, phoneNumber, bloodGroup, gender, email);
 
       // Persist auth state locally
       await saveAuthData(authResponse.token, {

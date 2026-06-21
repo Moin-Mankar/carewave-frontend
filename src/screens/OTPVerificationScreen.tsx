@@ -16,20 +16,42 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import CustomButton from '../components/CustomButton';
-import { checkUserExists, mobileLogin } from '../services/authService';
+import { sendEmailOtp, verifyEmailOtp, mobileLogin } from '../services/authService';
 import { saveAuthData } from '../services/storageService';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// Helper to mask email for security display
+const maskEmail = (emailStr: string): string => {
+  if (!emailStr || !emailStr.includes('@')) {
+    return emailStr || '';
+  }
+  const [localPart, domain] = emailStr.split('@');
+  if (localPart.length <= 3) {
+    return `${localPart}***@${domain}`;
+  }
+  if (localPart.length === 4) {
+    return `${localPart.slice(0, 2)}***${localPart.slice(-1)}@${domain}`;
+  }
+  if (localPart.length === 5) {
+    return `${localPart.slice(0, 3)}***${localPart.slice(-1)}@${domain}`;
+  }
+  return `${localPart.slice(0, 3)}***${localPart.slice(-2)}@${domain}`;
+};
+
 interface OTPVerificationScreenProps {
   phoneNumber: string;
+  email: string;
+  userExists: boolean;
   onNavigateBack: () => void;
-  onNavigateToOnboarding: () => void;
+  onNavigateToOnboarding: (email: string) => void;
   onNavigateToHome: (firstName: string) => void;
 }
 
 export default function OTPVerificationScreen({
   phoneNumber,
+  email,
+  userExists,
   onNavigateBack,
   onNavigateToOnboarding,
   onNavigateToHome,
@@ -38,7 +60,7 @@ export default function OTPVerificationScreen({
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(30);
 
-  // Simple countdown timer for OTP resend placeholder - registered once
+  // Simple countdown timer for OTP resend cooldown
   useEffect(() => {
     const interval = setInterval(() => {
       setTimer((prev) => {
@@ -50,7 +72,7 @@ export default function OTPVerificationScreen({
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [timer]);
 
   const handleVerify = async () => {
     if (otp.length !== 6) {
@@ -58,18 +80,26 @@ export default function OTPVerificationScreen({
       return;
     }
 
-    // Temporary development OTP verification rule
-    if (otp !== '123456') {
-      Alert.alert('Verification Failed', 'The verification code entered is incorrect. (Hint: Use 123456 for testing).');
-      return;
-    }
-
     setLoading(true);
     try {
-      // Query backend check user existence
-      const response = await checkUserExists(phoneNumber);
+      console.log(`[OTPVerify] Call verify-email-otp for ${email} with code ${otp}`);
+      const verifyResponse = await verifyEmailOtp(email, otp);
 
-      if (response.exists) {
+      if (!verifyResponse.verified) {
+        setLoading(false);
+        let errorMsg = 'The verification code entered is incorrect.';
+        if (verifyResponse.reason === 'OTP_EXPIRED') {
+          errorMsg = 'This verification code has expired. Please request a new one.';
+        } else if (verifyResponse.reason === 'TOO_MANY_ATTEMPTS') {
+          errorMsg = 'Too many failed verification attempts. Please request a new code.';
+        }
+        Alert.alert('Verification Failed', errorMsg);
+        return;
+      }
+
+      console.log('[OTPVerify] Verification succeeded. Navigating target flow.');
+
+      if (userExists) {
         console.log('[Auth] User exists. Triggering mobile-login API.');
         const authResponse = await mobileLogin(phoneNumber);
         
@@ -85,31 +115,38 @@ export default function OTPVerificationScreen({
       } else {
         console.log('[Auth] New user. Proceeding to Onboarding form.');
         Keyboard.dismiss();
-        onNavigateToOnboarding();
+        onNavigateToOnboarding(email);
       }
     } catch (error) {
       setLoading(false);
       Alert.alert(
         'Authentication Error',
-        'Could not complete authentication. Verify your network connection and that the backend server is running.',
+        'Could not complete verification. Verify your network connection and that the backend server is running.',
         [{ text: 'OK' }]
       );
     }
   };
 
-  const handleResend = () => {
-    setTimer(30);
-    setOtp('');
-    Alert.alert('OTP Resent', 'A new verification code has been simulated and sent.');
+  const handleResend = async () => {
+    setLoading(true);
+    try {
+      console.log(`[OTPVerify] Resending OTP to: ${email}`);
+      const sendRes = await sendEmailOtp(email);
+      setLoading(false);
+      if (sendRes.success) {
+        setTimer(30);
+        setOtp('');
+        Alert.alert('OTP Resent', 'A new verification code has been sent to your email.');
+      } else {
+        Alert.alert('Resend Failed', sendRes.message || 'Could not send verification code.');
+      }
+    } catch (error) {
+      setLoading(false);
+      Alert.alert('Error', 'Failed to request new code. Please try again.');
+    }
   };
 
-  // Helper to format the displayed phone number
-  const formatPhoneNumber = (num: string) => {
-    if (num.length === 10) {
-      return `+91 ${num.slice(0, 5)}-${num.slice(5)}`;
-    }
-    return `+91 ${num}`;
-  };
+  // Phone display removed as email OTP is delivery channel
 
   return (
     <SafeAreaView style={styles.container}>
@@ -140,7 +177,7 @@ export default function OTPVerificationScreen({
             <View style={styles.sirenBox}>
               <MaterialCommunityIcons name="alarm-light" size={32} color="#FF5252" />
             </View>
-            <Text style={styles.appTitle}>Verify Number</Text>
+            <Text style={styles.appTitle}>Verify Email</Text>
             <Text style={styles.appSubtitle}>Security Checkpoint</Text>
           </LinearGradient>
 
@@ -149,7 +186,10 @@ export default function OTPVerificationScreen({
             <View style={styles.sheetHeader}>
               <Text style={styles.loginTitle}>Enter OTP</Text>
               <Text style={styles.loginSubtext}>
-                We sent a 6-digit code to {formatPhoneNumber(phoneNumber)}
+                We sent a 6-digit verification code to your registered email address.
+              </Text>
+              <Text style={styles.maskedEmailText}>
+                {maskEmail(email)}
               </Text>
             </View>
 
@@ -279,6 +319,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     lineHeight: 20,
+  },
+  maskedEmailText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginTop: 8,
   },
   otpInput: {
     backgroundColor: '#1C1C1E',

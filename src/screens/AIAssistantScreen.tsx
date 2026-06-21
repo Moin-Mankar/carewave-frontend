@@ -32,7 +32,7 @@ interface AIAssistantScreenProps {
 }
 
 const SUGGESTED_PROMPTS = [
-  "How to prepare for a hurricane evacuation?",
+  "Someone is having a heart attack. What should I do right now?",
   "What to do during an earthquake?",
   "First-response steps for severe bleeding",
   "How to treat a minor burn?"

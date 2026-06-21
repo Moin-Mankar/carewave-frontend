@@ -10,23 +10,28 @@ import {
   Alert,
   Dimensions,
   Keyboard,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import CustomButton from '../components/CustomButton';
+import { checkUserExists, sendEmailOtp } from '../services/authService';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface PhoneEntryScreenProps {
-  onNavigateToOtp: (phoneNumber: string) => void;
+  onNavigateToOtp: (phoneNumber: string, email: string, userExists: boolean) => void;
 }
 
 export default function PhoneEntryScreen({ onNavigateToOtp }: PhoneEntryScreenProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [stage, setStage] = useState<'PHONE' | 'EMAIL'>('PHONE');
+  const [userExists, setUserExists] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleContinue = () => {
-    // Basic verification: strip any whitespace/non-digits and check length
+  const handlePhoneSubmit = async () => {
     const cleanNumber = phoneNumber.replace(/\D/g, '');
     
     if (cleanNumber.length !== 10) {
@@ -39,7 +44,69 @@ export default function PhoneEntryScreen({ onNavigateToOtp }: PhoneEntryScreenPr
     }
 
     Keyboard.dismiss();
-    onNavigateToOtp(cleanNumber);
+    setLoading(true);
+    try {
+      console.log(`[PhoneEntry] Checking user existence for number: ${cleanNumber}`);
+      const response = await checkUserExists(cleanNumber);
+      
+      if (response.exists) {
+        if (response.email && response.email.trim() !== '') {
+          console.log(`[PhoneEntry] User exists with linked email: ${response.email}. Dispatched OTP.`);
+          const sendRes = await sendEmailOtp(response.email);
+          setLoading(false);
+          if (sendRes.success) {
+            onNavigateToOtp(cleanNumber, response.email, true);
+          } else {
+            Alert.alert('Verification Error', sendRes.message || 'Could not send verification code.');
+          }
+        } else {
+          console.log(`[PhoneEntry] User exists but lacks linked email. Directing to email capture.`);
+          setUserExists(true);
+          setStage('EMAIL');
+          setLoading(false);
+        }
+      } else {
+        console.log(`[PhoneEntry] User does not exist. Directing to email capture.`);
+        setUserExists(false);
+        setStage('EMAIL');
+        setLoading(false);
+      }
+    } catch (error) {
+      setLoading(false);
+      Alert.alert(
+        'Network Error',
+        'Could not reach server. Verify your internet connectivity and try again.'
+      );
+    }
+  };
+
+  const handleEmailSubmit = async () => {
+    const cleanEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
+    Keyboard.dismiss();
+    setLoading(true);
+    try {
+      console.log(`[PhoneEntry] Dispatched OTP to entered email: ${cleanEmail}`);
+      const sendRes = await sendEmailOtp(cleanEmail);
+      setLoading(false);
+      if (sendRes.success) {
+        const cleanNumber = phoneNumber.replace(/\D/g, '');
+        onNavigateToOtp(cleanNumber, cleanEmail, userExists);
+      } else {
+        Alert.alert('Verification Error', sendRes.message || 'Could not send verification code.');
+      }
+    } catch (error) {
+      setLoading(false);
+      Alert.alert(
+        'Network Error',
+        'Failed to request verification code. Please check your connection.'
+      );
+    }
   };
 
   return (
@@ -58,6 +125,16 @@ export default function PhoneEntryScreen({ onNavigateToOtp }: PhoneEntryScreenPr
             colors={['#D32F2F', '#8E1C1C']}
             style={styles.headerSection}
           >
+            {stage === 'EMAIL' && (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => setStage('PHONE')}
+                accessibilityRole="button"
+                accessibilityLabel="Go back to phone entry"
+              >
+                <Feather name="chevron-left" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
             {/* Siren Icon Box */}
             <View style={styles.sirenBox}>
               <MaterialCommunityIcons name="alarm-light" size={32} color="#FF5252" />
@@ -69,41 +146,64 @@ export default function PhoneEntryScreen({ onNavigateToOtp }: PhoneEntryScreenPr
           {/* Lower dark sheet containing form fields */}
           <View style={styles.sheetSection}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.loginTitle}>Login</Text>
-              <Text style={styles.loginSubtext}>Enter your mobile number to continue</Text>
+              <Text style={styles.loginTitle}>{stage === 'PHONE' ? 'Login' : 'Email Setup'}</Text>
+              <Text style={styles.loginSubtext}>
+                {stage === 'PHONE' 
+                  ? 'Enter your mobile number to continue'
+                  : userExists 
+                    ? 'Enter email to receive security verification code'
+                    : 'Enter email to verify and register your account'}
+              </Text>
             </View>
 
             {/* Input fields box */}
-            <View style={styles.inputContainer}>
-              {/* Country selector */}
-              <View style={styles.countrySelector}>
-                <Text style={styles.countryText}>IN +91</Text>
-                <Feather name="chevron-down" size={16} color="#8E8E93" />
+            {stage === 'PHONE' ? (
+              <View style={styles.inputContainer}>
+                {/* Country selector */}
+                <View style={styles.countrySelector}>
+                  <Text style={styles.countryText}>IN +91</Text>
+                  <Feather name="chevron-down" size={16} color="#8E8E93" />
+                </View>
+
+                {/* Vertical divider line */}
+                <View style={styles.divider} />
+
+                {/* Text Input area */}
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="Enter mobile number"
+                  placeholderTextColor="#636366"
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  accessibilityLabel="Mobile Number Input"
+                />
+
+                {/* Phone Icon indicator */}
+                <Feather name="phone" size={18} color="#8E8E93" style={styles.phoneIcon} />
               </View>
-
-              {/* Vertical divider line */}
-              <View style={styles.divider} />
-
-              {/* Text Input area */}
-              <TextInput
-                style={styles.phoneInput}
-                placeholder="Enter mobile number"
-                placeholderTextColor="#636366"
-                keyboardType="phone-pad"
-                maxLength={10}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                accessibilityLabel="Mobile Number Input"
-              />
-
-              {/* Phone Icon indicator */}
-              <Feather name="phone" size={18} color="#8E8E93" style={styles.phoneIcon} />
-            </View>
+            ) : (
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="Enter email address"
+                  placeholderTextColor="#636366"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                  accessibilityLabel="Email Address Input"
+                />
+                <Feather name="mail" size={18} color="#8E8E93" style={styles.phoneIcon} />
+              </View>
+            )}
 
             {/* Reusable Submit button */}
             <CustomButton
-              title="Continue"
-              onPress={handleContinue}
+              title={stage === 'PHONE' ? 'Continue' : 'Send Code'}
+              onPress={stage === 'PHONE' ? handlePhoneSubmit : handleEmailSubmit}
+              loading={loading}
               icon="arrow-right"
             />
 
@@ -139,6 +239,18 @@ const styles = StyleSheet.create({
     paddingBottom: SCREEN_HEIGHT < 700 ? 30 : 50,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    top: SCREEN_HEIGHT < 700 ? 32 : 52,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 22,
   },
   sirenBox: {
     width: 60,

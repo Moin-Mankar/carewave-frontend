@@ -3,6 +3,7 @@ import messaging from '@react-native-firebase/messaging';
 
 export interface UserCheckResponse {
   exists: boolean;
+  email?: string;
 }
 
 export interface AuthResponseData {
@@ -98,7 +99,8 @@ export async function mobileRegister(
   firstName: string,
   contactNumber: string,
   bloodGroup: string,
-  gender: string
+  gender: string,
+  email: string
 ): Promise<AuthResponseData> {
   const url = `${BACKEND_API_URL}/auth/mobile-register`;
 
@@ -109,7 +111,7 @@ export async function mobileRegister(
     console.error('Failed to obtain FCM token', error);
   }
 
-  const payload = { firstName, contactNumber, bloodGroup, gender, fcmToken: token };
+  const payload = { firstName, contactNumber, bloodGroup, gender, fcmToken: token, email };
 
   console.log(`[API Request] POST - ${url}`);
   console.log(`[API Payload]`, JSON.stringify(payload, null, 2));
@@ -134,6 +136,73 @@ export async function mobileRegister(
     console.log(`[API Response Body]`, JSON.stringify(data, null, 2));
 
     return data as AuthResponseData;
+  } catch (error) {
+    console.error(`[API Network Error] Connection to ${url} failed:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Dispatches a 6-digit verification code to the target email.
+ */
+export async function sendEmailOtp(email: string): Promise<{ success: boolean; message?: string }> {
+  const url = `${BACKEND_API_URL}/auth/send-email-otp`;
+  const payload = { email };
+
+  console.log(`[API Request] POST - ${url}`);
+  console.log(`[API Payload]`, JSON.stringify(payload, null, 2));
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    console.log(`[API Response Status] ${response.status} - ${response.statusText}`);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { success: false, message: errorData.message || `HTTP Error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    return { success: true };
+  } catch (error) {
+    console.error(`[API Network Error] Connection to ${url} failed:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Validates the 6-digit email verification code.
+ */
+export async function verifyEmailOtp(email: string, otp: string): Promise<{ verified: boolean; reason?: string }> {
+  const url = `${BACKEND_API_URL}/auth/verify-email-otp`;
+  const payload = { email, otp };
+
+  console.log(`[API Request] POST - ${url}`);
+  console.log(`[API Payload]`, JSON.stringify(payload, null, 2));
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    console.log(`[API Response Status] ${response.status} - ${response.statusText}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data as { verified: boolean; reason?: string };
   } catch (error) {
     console.error(`[API Network Error] Connection to ${url} failed:`, error);
     throw error;
