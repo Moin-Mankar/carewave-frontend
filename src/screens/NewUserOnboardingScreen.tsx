@@ -63,7 +63,6 @@ export default function NewUserOnboardingScreen({
   const [gender, setGender] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
   const [showPicker, setShowPicker] = useState(false);
-  const [showGenderPicker, setShowGenderPicker] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -161,22 +160,27 @@ export default function NewUserOnboardingScreen({
                 accessibilityLabel="Full Name input"
               />
 
-              {/* Gender Picker Trigger */}
+              {/* Gender Selection Chips */}
               <Text style={styles.pickerLabel}>Gender</Text>
-              <TouchableOpacity
-                style={styles.pickerTrigger}
-                activeOpacity={0.8}
-                onPress={() => setShowGenderPicker(true)}
-                accessibilityRole="combobox"
-                accessibilityLabel="Gender selection picker"
-              >
-                <Text style={[styles.pickerValue, !gender && styles.pickerPlaceholder]}>
-                  {formatGenderLabel(gender) || 'Select your gender'}
-                </Text>
-                <Feather name="chevron-down" size={18} color="#8E8E93" />
-              </TouchableOpacity>
-
-              <View style={{ height: 16 }} />
+              <View style={styles.genderContainer}>
+                {GENDERS.map((g) => {
+                  const isActive = gender === g;
+                  return (
+                    <TouchableOpacity
+                      key={g}
+                      style={[styles.genderChip, isActive && styles.genderChipActive]}
+                      onPress={() => setGender(g)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isActive }}
+                      accessibilityLabel={`Select gender ${formatGenderLabel(g)}`}
+                    >
+                      <Text style={[styles.genderChipText, isActive && styles.genderChipTextActive]}>
+                        {formatGenderLabel(g)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
               {/* Blood Group Picker Trigger */}
               <Text style={styles.pickerLabel}>Blood Group</Text>
@@ -195,12 +199,14 @@ export default function NewUserOnboardingScreen({
             </View>
 
             {/* Submit Button */}
-            <CustomButton
-              title="Complete Registry"
-              onPress={handleSubmit}
-              loading={loading}
-              icon="check-circle"
-            />
+            <View style={styles.buttonContainer}>
+              <CustomButton
+                title="Complete Registry"
+                onPress={handleSubmit}
+                loading={loading}
+                icon="check-circle"
+              />
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -241,50 +247,6 @@ export default function NewUserOnboardingScreen({
                     {formatBloodGroupLabel(item)}
                   </Text>
                   {bloodGroup === item && <Feather name="check" size={18} color="#D32F2F" />}
-                </TouchableOpacity>
-              )}
-              ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
-            />
-          </View>
-        </View>
-      </Modal>
-
-      {/* Custom Gender Picker Modal Sheet */}
-      <Modal
-        visible={showGenderPicker}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowGenderPicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity 
-            style={styles.modalDismissArea} 
-            activeOpacity={1} 
-            onPress={() => setShowGenderPicker(false)} 
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Gender</Text>
-              <TouchableOpacity onPress={() => setShowGenderPicker(false)}>
-                <Feather name="x" size={24} color="#8E8E93" />
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={GENDERS}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.modalItem, gender === item && styles.modalItemActive]}
-                  onPress={() => {
-                    setGender(item);
-                    setShowGenderPicker(false);
-                  }}
-                >
-                  <Text style={[styles.modalItemText, gender === item && styles.modalItemTextActive]}>
-                    {formatGenderLabel(item)}
-                  </Text>
-                  {gender === item && <Feather name="check" size={18} color="#D32F2F" />}
                 </TouchableOpacity>
               )}
               ItemSeparatorComponent={() => <View style={styles.modalSeparator} />}
@@ -351,15 +313,13 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   sheetSection: {
-    flex: 1,
     backgroundColor: '#0F0F11',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     marginTop: -24,
     paddingHorizontal: 24,
     paddingTop: 36,
-    paddingBottom: 24,
-    justifyContent: 'space-between',
+    paddingBottom: 40,
   },
   sheetHeader: {
     marginBottom: 20,
@@ -416,8 +376,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1C1C1E',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: SCREEN_HEIGHT * 0.5,
-    paddingBottom: 30,
+    maxHeight: SCREEN_HEIGHT * 0.6,
+    paddingBottom: 40,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -453,5 +413,40 @@ const styles = StyleSheet.create({
   modalSeparator: {
     height: 1,
     backgroundColor: '#2C2C2E',
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  genderChip: {
+    flex: 1,
+    minWidth: 100,
+    height: 50,
+    backgroundColor: '#1C1C1E',
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderChipActive: {
+    backgroundColor: 'rgba(211, 47, 47, 0.1)',
+    borderColor: '#D32F2F',
+  },
+  genderChipText: {
+    fontSize: 16,
+    color: '#E5E5EA',
+    fontWeight: '500',
+  },
+  genderChipTextActive: {
+    color: '#D32F2F',
+    fontWeight: '600',
+  },
+  buttonContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+    width: '100%',
   },
 });
