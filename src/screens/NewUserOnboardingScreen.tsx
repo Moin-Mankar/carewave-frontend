@@ -12,6 +12,7 @@ import {
   Modal,
   FlatList,
   Keyboard,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -132,9 +133,11 @@ export default function NewUserOnboardingScreen({
               <Feather name="chevron-left" size={28} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <View style={styles.sirenBox}>
-              <MaterialCommunityIcons name="shield-account" size={32} color="#FF5252" />
-            </View>
+            {/* Branded CareWave Logo */}
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.logoImage}
+            />
             <Text style={styles.appTitle}>Profile Setup</Text>
             <Text style={styles.appSubtitle}>Emergency Info Registry</Text>
           </LinearGradient>
@@ -289,16 +292,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 22,
   },
-  sirenBox: {
+  logoImage: {
     width: 60,
     height: 60,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 15,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   appTitle: {
     fontSize: 32,

@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
 import './src/services/firebase';
+
+// Keep the splash screen visible while we fetch resources / restore session
+SplashScreen.preventAutoHideAsync().catch(() => {});
 import PhoneEntryScreen from './src/screens/PhoneEntryScreen';
 import OTPVerificationScreen from './src/screens/OTPVerificationScreen';
 import NewUserOnboardingScreen from './src/screens/NewUserOnboardingScreen';
@@ -78,6 +82,12 @@ export default function App() {
       } catch (error) {
         console.error('[Auth] Failed to restore session on startup:', error);
         setCurrentScreen('PHONE_ENTRY');
+      } finally {
+        try {
+          await SplashScreen.hideAsync();
+        } catch (err) {
+          console.warn('[SplashScreen] Error hiding splash screen:', err);
+        }
       }
     }
     restoreSession();
