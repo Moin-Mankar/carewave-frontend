@@ -39,3 +39,39 @@ export async function getAlertsHistory(): Promise<Alert[]> {
 
   return response.json();
 }
+
+export interface DisasterAlert {
+  disasterType: 'EARTHQUAKE' | 'FLOOD' | 'STORM' | 'CYCLONE';
+  severity: 'MODERATE' | 'HIGH' | 'CRITICAL';
+  distanceKm: number | null;
+  warningRadiusKm: number;
+  affectedForUser: boolean;
+  occurredAt: string;
+  status: 'ACTIVE' | 'RESOLVED';
+  locationName: string;
+}
+
+/**
+ * Fetches recent disaster events relevant to the authenticated user.
+ */
+export async function getRecentDisasters(): Promise<DisasterAlert[]> {
+  const url = `${BACKEND_API_URL}/disasters/recent`;
+  const session = await getAuthData();
+  if (!session || !session.token) {
+    throw new Error('Authentication session not found.');
+  }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${session.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`HTTP Error ${response.status}: ${errorText || response.statusText}`);
+  }
+
+  return response.json();
+}

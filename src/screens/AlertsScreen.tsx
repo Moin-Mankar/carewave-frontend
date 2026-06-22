@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { getAlertsHistory, Alert } from '../services/alertsService';
+import { getAlertsHistory, Alert, getRecentDisasters, DisasterAlert } from '../services/alertsService';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -25,12 +25,14 @@ interface AlertsScreenProps {
 export default function AlertsScreen({ onNavigateBack, onNavigateToMap }: AlertsScreenProps) {
   const insets = useSafeAreaInsets();
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [disasters, setDisasters] = useState<DisasterAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Detail Modal State
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [globalExpanded, setGlobalExpanded] = useState(false);
 
   useEffect(() => {
     fetchAlerts();
@@ -45,8 +47,12 @@ export default function AlertsScreen({ onNavigateBack, onNavigateToMap }: Alerts
     setError(null);
 
     try {
-      const data = await getAlertsHistory();
-      setAlerts(data);
+      const [alertsData, disastersData] = await Promise.all([
+        getAlertsHistory(),
+        getRecentDisasters()
+      ]);
+      setAlerts(alertsData);
+      setDisasters(disastersData);
     } catch (err: any) {
       console.error('[AlertsScreen] Error loading alert history:', err);
       setError(err.message || 'Failed to fetch alert history.');
@@ -131,6 +137,109 @@ export default function AlertsScreen({ onNavigateBack, onNavigateToMap }: Alerts
     }
   };
 
+  const getDisasterIcon = (type: string) => {
+    switch (type) {
+      case 'EARTHQUAKE':
+        return { name: 'pulse', color: '#FF9F0A' };
+      case 'FLOOD':
+        return { name: 'water', color: '#0A84FF' };
+      case 'STORM':
+        return { name: 'thunderstorm', color: '#FF3B30' };
+      case 'CYCLONE':
+        return { name: 'sync', color: '#FF2D55' };
+      default:
+        return { name: 'warning', color: '#8E8E93' };
+    }
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'CRITICAL':
+        return '#FF3B30';
+      case 'HIGH':
+        return '#FF9F0A';
+      case 'MODERATE':
+      default:
+        return '#FFCC00';
+    }
+  };
+
+  const renderActiveDisasterCard = (disaster: DisasterAlert, index: number) => {
+    const iconInfo = getDisasterIcon(disaster.disasterType);
+    const statusColor = getStatusColor(disaster.status);
+    const hasDistance = disaster.distanceKm !== null && disaster.distanceKm !== undefined;
+    const severityColor = getSeverityColor(disaster.severity);
+
+    return (
+      <View key={`disaster-active-${index}`} style={[styles.card, styles.disasterCardBorder, { borderColor: 'rgba(48, 209, 88, 0.3)' }]}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardIconBox}>
+            <Ionicons name={iconInfo.name as any} size={22} color={iconInfo.color} />
+          </View>
+          <View style={styles.cardTitleCol}>
+            <Text style={styles.cardTypeName}>{disaster.disasterType} WARNING</Text>
+            <Text style={[styles.severityText, { color: severityColor }]}>
+              {disaster.severity} SEVERITY
+            </Text>
+            <Text style={styles.cardOwnerName}>{disaster.locationName || 'Local Region'}</Text>
+            {hasDistance ? (
+              <Text style={styles.distanceText}>
+                📍 {disaster.distanceKm!.toFixed(1)} km away (Radius: {disaster.warningRadiusKm.toFixed(0)} km)
+              </Text>
+            ) : (
+              <Text style={styles.distanceText}>📍 Location unavailable</Text>
+            )}
+            <Text style={styles.cardTimestamp}>{formatAlertDateTime(disaster.occurredAt)}</Text>
+          </View>
+          <View style={styles.cardStatusCol}>
+            <View style={[styles.statusBadge, { borderColor: statusColor + '40', backgroundColor: statusColor + '10' }]}>
+              <Text style={[styles.statusBadgeText, { color: statusColor }]}>{disaster.status}</Text>
+            </View>
+            <View style={[styles.relationshipBadge, styles.badgeAffected]}>
+              <Text style={[styles.relationshipBadgeText, { color: '#30D158' }]}>
+                ACTIVE FOR YOU
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderGlobalDisasterCard = (disaster: DisasterAlert, index: number) => {
+    const iconInfo = getDisasterIcon(disaster.disasterType);
+    const statusColor = getStatusColor(disaster.status);
+    const severityColor = getSeverityColor(disaster.severity);
+
+    return (
+      <View key={`disaster-global-${index}`} style={[styles.card, styles.disasterCardBorder]}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardIconBox}>
+            <Ionicons name={iconInfo.name as any} size={22} color={iconInfo.color} />
+          </View>
+          <View style={styles.cardTitleCol}>
+            <Text style={styles.cardTypeName}>{disaster.disasterType} WARNING</Text>
+            <Text style={[styles.severityText, { color: severityColor }]}>
+              {disaster.severity} SEVERITY
+            </Text>
+            <Text style={styles.cardOwnerName}>{disaster.locationName || 'Local Region'}</Text>
+            <Text style={styles.cardTimestamp}>{formatAlertDateTime(disaster.occurredAt)}</Text>
+          </View>
+          <View style={styles.cardStatusCol}>
+            <View style={[styles.statusBadge, { borderColor: statusColor + '40', backgroundColor: statusColor + '10' }]}>
+              <Text style={[styles.statusBadgeText, { color: statusColor }]}>{disaster.status}</Text>
+            </View>
+            <View style={[styles.relationshipBadge, styles.badgeInformational]}>
+              <Text style={[styles.relationshipBadgeText, { color: '#8E8E93' }]}>
+                INFORMATIONAL
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const handleOpenGoogleMaps = (lat: number, lon: number) => {
     const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
     Linking.openURL(url).catch((err) => console.error('Error opening Google Maps:', err));
@@ -139,6 +248,21 @@ export default function AlertsScreen({ onNavigateBack, onNavigateToMap }: Alerts
   // Filter alerts by relationship
   const myAlerts = alerts.filter((a) => a.relationship === 'CREATED_BY_ME');
   const monitoringAlerts = alerts.filter((a) => a.relationship === 'MONITORING');
+
+  const isMockDisaster = (d: DisasterAlert) => {
+    const loc = (d.locationName || '').toLowerCase();
+    if (loc.includes('alert area') || loc.includes('test')) {
+      return true;
+    }
+    if (d.distanceKm === 0) {
+      return true;
+    }
+    return false;
+  };
+
+  // Split disasters using affectedForUser and filter out test/mock records
+  const activeDisasters = disasters.filter((d) => d.affectedForUser && !isMockDisaster(d));
+  const globalDisasters = disasters.filter((d) => !d.affectedForUser && !isMockDisaster(d));
 
   const renderAlertCard = (alert: Alert) => {
     const iconInfo = getAlertIcon(alert.alertType);
@@ -238,24 +362,68 @@ export default function AlertsScreen({ onNavigateBack, onNavigateToMap }: Alerts
           {/* Section 1 - My Alerts */}
           <Text style={styles.sectionHeader}>MY ALERTS ({myAlerts.length})</Text>
           {myAlerts.length === 0 ? (
-            <View style={styles.emptyContainer}>
+            <View style={[styles.emptyContainer, { marginBottom: 20 }]}>
               <Text style={styles.emptyText}>No alerts created yet.</Text>
             </View>
           ) : (
-            myAlerts.map(renderAlertCard)
+            <View style={{ marginBottom: 12 }}>
+              {myAlerts.map(renderAlertCard)}
+            </View>
           )}
 
           {/* Section 2 - Alerts I'm Monitoring */}
-          <Text style={[styles.sectionHeader, { marginTop: 24 }]}>
+          <Text style={[styles.sectionHeader, { marginTop: 12 }]}>
             ALERTS I'M MONITORING ({monitoringAlerts.length})
           </Text>
           {monitoringAlerts.length === 0 ? (
-            <View style={styles.emptyContainer}>
+            <View style={[styles.emptyContainer, { marginBottom: 20 }]}>
               <Text style={styles.emptyText}>No alerts received from linked contacts.</Text>
             </View>
           ) : (
-            monitoringAlerts.map(renderAlertCard)
+            <View style={{ marginBottom: 12 }}>
+              {monitoringAlerts.map(renderAlertCard)}
+            </View>
           )}
+
+          {/* Section 3 - ACTIVE FOR YOU */}
+          <Text style={[styles.sectionHeader, { marginTop: 12 }]}>ACTIVE FOR YOU</Text>
+          {activeDisasters.length === 0 ? (
+            <View style={[styles.emptyContainer, { marginBottom: 20 }]}>
+              <Text style={styles.emptyText}>No active disaster alerts affecting your location.</Text>
+            </View>
+          ) : (
+            <View style={{ marginBottom: 12 }}>
+              {activeDisasters.map(renderActiveDisasterCard)}
+            </View>
+          )}
+
+          {/* Section 4 - RECENT GLOBAL DISASTER EVENTS */}
+          <View style={{ marginTop: 12 }}>
+            <Text style={styles.sectionHeader}>
+              RECENT GLOBAL DISASTER EVENTS ({globalDisasters.length})
+            </Text>
+            <TouchableOpacity
+              style={styles.collapseToggleBtn}
+              onPress={() => setGlobalExpanded(!globalExpanded)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.collapseToggleBtnText}>
+                {globalExpanded ? '▲ Hide Events' : '▼ Show Events'}
+              </Text>
+            </TouchableOpacity>
+
+            {globalExpanded && (
+              <View style={{ marginTop: 8 }}>
+                {globalDisasters.length === 0 ? (
+                  <View style={[styles.emptyContainer, { marginBottom: 20 }]}>
+                    <Text style={styles.emptyText}>No disaster alerts available.</Text>
+                  </View>
+                ) : (
+                  globalDisasters.map(renderGlobalDisasterCard)
+                )}
+              </View>
+            )}
+          </View>
         </ScrollView>
       )}
 
@@ -613,5 +781,44 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
+  },
+  disasterCardBorder: {
+    borderColor: 'rgba(255, 159, 10, 0.25)',
+  },
+  distanceText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FF9F0A',
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  badgeAffected: {
+    backgroundColor: 'rgba(48, 209, 88, 0.15)',
+  },
+  badgeInformational: {
+    backgroundColor: 'rgba(142, 142, 147, 0.15)',
+  },
+  severityText: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  collapseToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  collapseToggleBtnText: {
+    color: '#8E8E93',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
