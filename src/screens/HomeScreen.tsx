@@ -641,9 +641,15 @@ export default function HomeScreen({
   };
 
   // Quick Action click handlers
-  const handleLiveTrackingPress = () => {
+  const handleLiveTrackingPress = async () => {
     console.log('[Quick Action] Live Tracking pressed.');
-    onNavigateToMap(activeEmergency?.emergencyId);
+    try {
+      const activeEm = await getActiveEmergency();
+      onNavigateToMap(activeEm?.emergencyId);
+    } catch (error) {
+      console.warn('Error fetching active emergency on press:', error);
+      onNavigateToMap(undefined);
+    }
   };
 
   const handleEmergencyHistoryPress = () => {
