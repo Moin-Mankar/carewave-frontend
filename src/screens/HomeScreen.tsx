@@ -12,6 +12,7 @@ import {
   Platform,
   TouchableOpacity,
   Modal,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,7 +22,7 @@ import * as Location from 'expo-location';
 import * as Network from 'expo-network';
 import { clearAuthData, getAuthData } from '../services/storageService';
 import { createMedicalEmergency, createEmergency, getFireConfiguration } from '../services/emergencyService';
-import { cancelAlert, resolveAlert, getActiveEmergency, ActiveEmergencyResponse, sendCurrentEmergencyLocation } from '../services/trackingService';
+import { cancelAlert, resolveAlert, getActiveEmergency, ActiveEmergencyResponse, sendCurrentEmergencyLocation, acknowledgeEmergency } from '../services/trackingService';
 import { getUnreadCount } from '../services/notificationService';
 import EmergencySuccessModal from '../components/EmergencySuccessModal';
 import EmergencyFailureModal from '../components/EmergencyFailureModal';
@@ -116,6 +117,9 @@ export default function HomeScreen({
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [acknowledging, setAcknowledging] = useState(false);
 
   const lastActiveRef = useRef<boolean | null>(null);
 
@@ -209,18 +213,28 @@ export default function HomeScreen({
     fetchSystemStatus();
 
     const getFcmToken = async () => {
-    try {
-      await messaging().requestPermission();
-
-      const token = await messaging().getToken();
-
-      console.log('FCM TOKEN:', token);
-    } catch (error) {
-      console.error('FCM ERROR:', error);
-    }
-  };
+      try {
+        await messaging().requestPermission();
+        const token = await messaging().getToken();
+        console.log('FCM TOKEN:', token);
+      } catch (error) {
+        console.error('FCM ERROR:', error);
+      }
+    };
 
     getFcmToken();
+
+    async function loadUserId() {
+      try {
+        const session = await getAuthData();
+        if (session && session.user && session.user.userId) {
+          setCurrentUserId(session.user.userId);
+        }
+      } catch (err) {
+        console.warn('Error loading user id:', err);
+      }
+    }
+    loadUserId();
   }, []);
 
   // Check for safety check-in pending emergency delegation
@@ -257,18 +271,17 @@ export default function HomeScreen({
 
   // Victim active emergency location auto update loop
   useEffect(() => {
-
     let intervalId: ReturnType<typeof setInterval> | null = null;
-    //let intervalId: NodeJS.Timeout | null = null;
+    const isVictim = activeEmergency && currentUserId && activeEmergency.userId === currentUserId;
 
-    if (activeEmergency && activeEmergency.emergencyId && activeEmergency.emergencyStatus === 'ACTIVE') {
-          console.log(
-      '[LiveTracking Effect]',
-      'Emergency ID:',
-      activeEmergency.emergencyId,
-      'Status:',
-      activeEmergency.emergencyStatus
-    );
+    if (isVictim && activeEmergency && activeEmergency.emergencyId && activeEmergency.emergencyStatus === 'ACTIVE') {
+      console.log(
+        '[LiveTracking Effect]',
+        'Emergency ID:',
+        activeEmergency.emergencyId,
+        'Status:',
+        activeEmergency.emergencyStatus
+      );
       
       console.log('[LiveTracking Update] Interval Started');
       // Trigger first update immediately
@@ -285,7 +298,14 @@ export default function HomeScreen({
         console.log('[LiveTracking Update] Interval Stopped');
       }
     };
-  }, [activeEmergency?.emergencyId, activeEmergency?.emergencyStatus]);
+  }, [activeEmergency?.emergencyId, activeEmergency?.emergencyStatus, currentUserId]);
+
+  // Reset acknowledgment state when active emergency ID changes or goes null
+  useEffect(() => {
+    if (!activeEmergency?.emergencyId) {
+      setAcknowledged(false);
+    }
+  }, [activeEmergency?.emergencyId]);
 
   const handleSignOut = async () => {
     setLoading(true);
@@ -516,6 +536,33 @@ export default function HomeScreen({
     }
   };
 
+  const handleCallVictim = () => {
+    if (activeEmergency?.victimPhone) {
+      Linking.openURL(`tel:${activeEmergency.victimPhone}`);
+    } else {
+      Alert.alert('Call Victim', 'Victim phone number is not available.');
+    }
+  };
+
+  const handleAcknowledgeAlert = async () => {
+    if (!activeEmergency) return;
+    setAcknowledging(true);
+    try {
+      const success = await acknowledgeEmergency(activeEmergency.emergencyId);
+      if (success) {
+        setAcknowledged(true);
+        Alert.alert('Alert Acknowledged', 'Victim has been notified that you are tracking their location.');
+      } else {
+        Alert.alert('Acknowledgement Failed', 'Could not send acknowledgement notification to the victim.');
+      }
+    } catch (error: any) {
+      console.error('[Acknowledge Error]', error);
+      Alert.alert('Error', error.message || 'Failed to acknowledge emergency.');
+    } finally {
+      setAcknowledging(false);
+    }
+  };
+
   // Reusable unified emergency handling pipeline
   const handleEmergency = async (emergencyType: EmergencyType) => {
     if (emergencyType === 'POLICE') {
@@ -739,47 +786,115 @@ export default function HomeScreen({
           <View style={styles.contentBody}>
             {/* Active Emergency Card */}
             {activeEmergency && (
-              <View style={styles.activeEmergencyCard}>
-                <View style={styles.activeEmergencyHeader}>
-                  <MaterialCommunityIcons name="alert-decagram" size={24} color="#FF3B30" />
-                  <Text style={styles.activeEmergencyTitle}>🚨 ACTIVE EMERGENCY</Text>
+              activeEmergency.userId === currentUserId ? (
+                // Victim View
+                <View style={styles.activeEmergencyCard}>
+                  <View style={styles.activeEmergencyHeader}>
+                    <MaterialCommunityIcons name="alert-decagram" size={24} color="#FF3B30" />
+                    <Text style={styles.activeEmergencyTitle}>🚨 ACTIVE EMERGENCY</Text>
+                  </View>
+                  
+                  <Text style={styles.activeEmergencyType}>
+                    {activeEmergency.emergencyType === 'MEDICAL' ? 'Medical Emergency' : 
+                     activeEmergency.emergencyType === 'POLICE' ? 'Police Emergency' : 
+                     activeEmergency.emergencyType === 'FIRE' ? 'Fire Emergency' : 
+                     activeEmergency.emergencyType === 'PERSONAL_SAFETY' ? 'PERSONAL SAFETY EMERGENCY' : 
+                     activeEmergency.emergencyType === 'OTHER' ? 'GENERAL EMERGENCY' : 'Emergency Alert'}
+                  </Text>
+                  
+                  <View style={styles.activeEmergencyStatusRow}>
+                    <Text style={styles.activeEmergencyLabel}>Status:</Text>
+                    <View style={styles.activeEmergencyBadge}>
+                      <Text style={styles.activeEmergencyBadgeText}>ACTIVE</Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.activeEmergencyTime}>
+                    Started: {elapsedTime}
+                  </Text>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.activeCardCancelBtn}
+                    onPress={handleCancelAlertCall}
+                  >
+                    <Text style={styles.activeCardCancelText}>CANCEL ALERT</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.activeCardResolveBtn}
+                    onPress={handleResolveAlertCall}
+                  >
+                    <Text style={styles.activeCardResolveText}>MARK RESOLVED</Text>
+                  </TouchableOpacity>
                 </View>
-                
-                <Text style={styles.activeEmergencyType}>
-                  {activeEmergency.emergencyType === 'MEDICAL' ? 'Medical Emergency' : 
-                   activeEmergency.emergencyType === 'POLICE' ? 'Police Emergency' : 
-                   activeEmergency.emergencyType === 'FIRE' ? 'Fire Emergency' : 
-                   activeEmergency.emergencyType === 'PERSONAL_SAFETY' ? 'PERSONAL SAFETY EMERGENCY' : 
-                   activeEmergency.emergencyType === 'OTHER' ? 'GENERAL EMERGENCY' : 'Emergency Alert'}
-                </Text>
-                
-                <View style={styles.activeEmergencyStatusRow}>
-                  <Text style={styles.activeEmergencyLabel}>Status:</Text>
-                  <View style={styles.activeEmergencyBadge}>
-                    <Text style={styles.activeEmergencyBadgeText}>ACTIVE</Text>
+              ) : (
+                // Guardian View
+                <View style={styles.activeEmergencyCard}>
+                  <View style={styles.activeEmergencyHeader}>
+                    <MaterialCommunityIcons name="alert-decagram" size={24} color="#FF3B30" />
+                    <Text style={styles.activeEmergencyTitle}>
+                      🚨 {activeEmergency.emergencyType === 'MEDICAL' ? 'MEDICAL EMERGENCY' :
+                          activeEmergency.emergencyType === 'POLICE' ? 'POLICE EMERGENCY' :
+                          activeEmergency.emergencyType === 'FIRE' ? 'FIRE EMERGENCY' :
+                          activeEmergency.emergencyType === 'PERSONAL_SAFETY' ? 'PERSONAL SAFETY EMERGENCY' :
+                          'ACTIVE EMERGENCY'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.guardianInfoContainer}>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.activeEmergencyLabel}>Triggered By:</Text>
+                      <Text style={styles.activeEmergencyValueText}>
+                        {activeEmergency.victimName || 'Emergency Contact'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={styles.activeEmergencyLabel}>Status:</Text>
+                      <View style={styles.activeEmergencyBadge}>
+                        <Text style={styles.activeEmergencyBadgeText}>ACTIVE</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={styles.activeEmergencyLabel}>Active For:</Text>
+                      <Text style={styles.activeEmergencyValueText}>{elapsedTime}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.guardianActionsRow}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.callVictimBtn}
+                      onPress={handleCallVictim}
+                    >
+                      <Feather name="phone" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.callVictimText}>CALL VICTIM</Text>
+                    </TouchableOpacity>
+
+                    {acknowledged ? (
+                      <View style={styles.acknowledgedBadge}>
+                        <Feather name="check" size={16} color="#34C759" style={{ marginRight: 6 }} />
+                        <Text style={styles.acknowledgedText}>ALERT ACKNOWLEDGED</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={styles.acknowledgeBtn}
+                        onPress={handleAcknowledgeAlert}
+                        disabled={acknowledging}
+                      >
+                        <Feather name="check-circle" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.acknowledgeText}>
+                          {acknowledging ? 'ACKNOWLEDGING...' : 'ALERT RECEIVED'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
-                
-                <Text style={styles.activeEmergencyTime}>
-                  Started: {elapsedTime}
-                </Text>
-
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.activeCardCancelBtn}
-                  onPress={handleCancelAlertCall}
-                >
-                  <Text style={styles.activeCardCancelText}>CANCEL ALERT</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.activeCardResolveBtn}
-                  onPress={handleResolveAlertCall}
-                >
-                  <Text style={styles.activeCardResolveText}>MARK RESOLVED</Text>
-                </TouchableOpacity>
-              </View>
+              )
             )}
 
             {/* SOS Emergency dispatch card */}
@@ -1693,6 +1808,75 @@ const styles = StyleSheet.create({
     color: '#34C759',
     fontSize: 14,
     fontWeight: '700',
+  },
+  guardianInfoContainer: {
+    marginVertical: 14,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  activeEmergencyValueText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  guardianActionsRow: {
+    flexDirection: 'column',
+    gap: 10,
+    marginTop: 8,
+  },
+  callVictimBtn: {
+    width: '100%',
+    backgroundColor: '#0A84FF',
+    height: 48,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callVictimText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  acknowledgeBtn: {
+    width: '100%',
+    backgroundColor: '#34C759',
+    height: 48,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  acknowledgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  acknowledgedBadge: {
+    width: '100%',
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(52, 199, 89, 0.4)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  acknowledgedText: {
+    color: '#34C759',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   successModalContainer: {
     backgroundColor: '#1C1C1E',

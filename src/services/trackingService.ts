@@ -18,6 +18,8 @@ export interface ActiveEmergencyResponse {
   emergencyType: string;
   createdAt: string;
   userId?: string;
+  victimName?: string;
+  victimPhone?: string;
 }
 
 /**
@@ -282,6 +284,33 @@ export async function sendCurrentEmergencyLocation(emergencyId: string): Promise
     return false;
   } finally {
     isLocationUpdateInProgress = false;
+  }
+}
+
+/**
+ * Sends a stateless POST request to acknowledge an active emergency event.
+ */
+export async function acknowledgeEmergency(emergencyId: string): Promise<boolean> {
+  const url = `${BACKEND_API_URL}/emergency/${emergencyId}/acknowledge`;
+  const session = await getAuthData();
+  if (!session || !session.token) {
+    throw new Error('Authentication session not found.');
+  }
+
+  console.log('[API Request] POST - ' + url);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.token}`,
+      },
+    });
+
+    console.log(`[API Response Status] ${response.status} - ${response.statusText}`);
+    return response.ok;
+  } catch (error: any) {
+    console.error(`[API Error] POST ${url} failed:`, error);
+    return false;
   }
 }
 
