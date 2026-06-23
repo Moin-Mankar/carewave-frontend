@@ -41,7 +41,7 @@ export async function getAlertsHistory(): Promise<Alert[]> {
 }
 
 export interface DisasterAlert {
-  disasterType: 'EARTHQUAKE' | 'FLOOD' | 'STORM' | 'CYCLONE';
+  disasterType: 'EARTHQUAKE' | 'FLOOD' | 'STORM' | 'CYCLONE' | 'HEAVY_RAIN' | 'FLOOD_RISK';
   severity: 'MODERATE' | 'HIGH' | 'CRITICAL';
   distanceKm: number | null;
   warningRadiusKm: number;

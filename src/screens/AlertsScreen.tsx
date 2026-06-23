@@ -142,11 +142,14 @@ export default function AlertsScreen({ onNavigateBack, onNavigateToMap }: Alerts
       case 'EARTHQUAKE':
         return { name: 'pulse', color: '#FF9F0A' };
       case 'FLOOD':
+      case 'FLOOD_RISK':
         return { name: 'water', color: '#0A84FF' };
       case 'STORM':
         return { name: 'thunderstorm', color: '#FF3B30' };
       case 'CYCLONE':
         return { name: 'sync', color: '#FF2D55' };
+      case 'HEAVY_RAIN':
+        return { name: 'rainy', color: '#0A84FF' };
       default:
         return { name: 'warning', color: '#8E8E93' };
     }
