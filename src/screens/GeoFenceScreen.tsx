@@ -15,6 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { WebView } from 'react-native-webview';
 import {
   getContacts,
   getSafeZones,
@@ -54,6 +55,12 @@ export default function GeoFenceScreen({ onNavigateBack }: GeoFenceScreenProps) 
 
   // UI State
   const [showContactSelector, setShowContactSelector] = useState(false);
+  const [mapSelectorVisible, setMapSelectorVisible] = useState(false);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [tempLatitude, setTempLatitude] = useState<number | null>(null);
+  const [tempLongitude, setTempLongitude] = useState<number | null>(null);
+  const [locationType, setLocationType] = useState<'CURRENT' | 'MAP' | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -91,12 +98,147 @@ export default function GeoFenceScreen({ onNavigateBack }: GeoFenceScreenProps) 
     }
   };
 
+  const formatName = (name: string | null | undefined): string => {
+    if (!name) return 'Protected User';
+    const clean = name.replace(/\s+null$/i, '').replace(/^null\s+/i, '').trim();
+    return clean === 'null' ? '' : clean;
+  };
+
+  const handleOpenMapSelector = async () => {
+    setMapLoading(true);
+    setMapSelectorVisible(true);
+    setTempLatitude(null);
+    setTempLongitude(null);
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setMapCenter({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      } else {
+        setMapCenter({ latitude: 18.5204, longitude: 73.8567 }); // Default Pune center
+      }
+    } catch (error: any) {
+      console.error('[GeoFenceScreen] Location fetch for map center failed:', error);
+      try {
+        const lastKnown = await Location.getLastKnownPositionAsync({});
+        if (lastKnown) {
+          setMapCenter({
+            latitude: lastKnown.coords.latitude,
+            longitude: lastKnown.coords.longitude,
+          });
+        } else {
+          setMapCenter({ latitude: 18.5204, longitude: 73.8567 });
+        }
+      } catch {
+        setMapCenter({ latitude: 18.5204, longitude: 73.8567 });
+      }
+    } finally {
+      setMapLoading(false);
+    }
+  };
+
+  const handleMapMessage = (event: any) => {
+    try {
+      const message = JSON.parse(event.nativeEvent.data);
+      if (message.event === 'LOCATION_SELECT') {
+        setTempLatitude(message.data.latitude);
+        setTempLongitude(message.data.longitude);
+      }
+    } catch (error: any) {
+      console.error('[GeoFenceScreen] Error parsing map select message:', error);
+    }
+  };
+
+  const mapHtmlContent = React.useMemo(() => {
+    if (!mapCenter) return '';
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          html, body, #map {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #0F0F11;
+          }
+          .custom-selection-marker {
+            background: none !important;
+            border: none !important;
+            filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.35));
+          }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          var map = L.map('map', {
+            zoomControl: true,
+            attributionControl: false
+          }).setView([${mapCenter.latitude}, ${mapCenter.longitude}], 15);
+
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+          }).addTo(map);
+
+          var selectionMarker = null;
+
+          var selectionIcon = L.divIcon({
+            html: '<svg width="28" height="34" viewBox="0 0 28 34" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 0C6.3 0 0 6.3 0 14c0 9.3 12.5 18.5 13.3 19.1.2.1.5.2.7.2s.5-.1.7-.2C15.5 32.5 28 23.3 28 14c0-7.7-6.3-14-14-14z" fill="#FF3B30"/><circle cx="14" cy="14" r="6" fill="#FFFFFF"/></svg>',
+            iconSize: [28, 34],
+            iconAnchor: [14, 34],
+            className: 'custom-selection-marker'
+          });
+
+          // Pulse marker for initial user location
+          var userIcon = L.divIcon({
+            html: '<div style="width: 14px; height: 14px; background-color: #0A84FF; border: 2.5px solid #FFFFFF; border-radius: 50%; box-shadow: 0 0 8px rgba(10, 132, 255, 0.8);"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+            className: 'custom-selection-marker'
+          });
+          L.marker([${mapCenter.latitude}, ${mapCenter.longitude}], { icon: userIcon }).addTo(map);
+
+          map.on('click', function(e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+            
+            if (selectionMarker) {
+              selectionMarker.setLatLng(e.latlng);
+            } else {
+              selectionMarker = L.marker(e.latlng, { icon: selectionIcon }).addTo(map);
+            }
+            
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              event: 'LOCATION_SELECT',
+              data: { latitude: lat, longitude: lng }
+            }));
+          });
+        </script>
+      </body>
+      </html>
+    `;
+  }, [mapCenter]);
+
   const handleGetCurrentLocation = async () => {
     setLocationStatus('fetching');
+    setLocationType('CURRENT');
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setLocationStatus('error');
+        setLocationType(null);
         Alert.alert(
           'Permission Denied',
           'CareWave requires location access to set up the safe zone center.'
@@ -114,6 +256,7 @@ export default function GeoFenceScreen({ onNavigateBack }: GeoFenceScreenProps) 
     } catch (error: any) {
       console.error('[GeoFenceScreen] Location fetch failed:', error);
       setLocationStatus('error');
+      setLocationType(null);
       Alert.alert('Location Error', 'Unable to retrieve current coordinates. Verify GPS is enabled.');
     }
   };
@@ -151,6 +294,7 @@ export default function GeoFenceScreen({ onNavigateBack }: GeoFenceScreenProps) 
       setCenterLatitude(null);
       setCenterLongitude(null);
       setLocationStatus('idle');
+      setLocationType(null);
 
       // Refresh list
       await fetchSafeZonesData();
@@ -246,7 +390,7 @@ export default function GeoFenceScreen({ onNavigateBack }: GeoFenceScreenProps) 
                 <Feather name="user" size={20} color="#FF3B30" style={styles.iconMargin} />
                 <Text style={selectedContact ? styles.selectedText : styles.placeholderText}>
                   {selectedContact
-                    ? `${selectedContact.fullName} (${selectedContact.relation})`
+                    ? `${formatName(selectedContact.fullName)} (${selectedContact.relation})`
                     : 'Select Protected User'}
                 </Text>
               </View>
@@ -267,49 +411,97 @@ export default function GeoFenceScreen({ onNavigateBack }: GeoFenceScreenProps) 
 
           {/* Radius Preset selection */}
           <Text style={styles.inputLabel}>Radius Selection</Text>
-          <View style={styles.chipRow}>
-            {[100, 250, 500, 1000].map((radius) => {
-              const isActive = radiusMeters === radius;
-              return (
-                <TouchableOpacity
-                  key={radius}
-                  style={[styles.chipBtn, isActive && styles.chipBtnActive]}
-                  activeOpacity={0.85}
-                  onPress={() => setRadiusMeters(radius)}
-                >
-                  <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                    {radius}m
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          <View style={{ gap: 8 }}>
+            <View style={styles.chipRow}>
+              {[100, 250, 500].map((radius) => {
+                const isActive = radiusMeters === radius;
+                return (
+                  <TouchableOpacity
+                    key={radius}
+                    style={[styles.chipBtn, isActive && styles.chipBtnActive]}
+                    activeOpacity={0.85}
+                    onPress={() => setRadiusMeters(radius)}
+                  >
+                    <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                      {radius}m
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={styles.chipRow}>
+              {[1000, 2000, 5000].map((radius) => {
+                const isActive = radiusMeters === radius;
+                return (
+                  <TouchableOpacity
+                    key={radius}
+                    style={[styles.chipBtn, isActive && styles.chipBtnActive]}
+                    activeOpacity={0.85}
+                    onPress={() => setRadiusMeters(radius)}
+                  >
+                    <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                      {radius}m
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           {/* Location Selection */}
           <Text style={styles.inputLabel}>Location Selection</Text>
-          <TouchableOpacity
-            style={[
-              styles.locationBtn,
-              locationStatus === 'success' && styles.locationBtnSuccess,
-            ]}
-            activeOpacity={0.8}
-            onPress={handleGetCurrentLocation}
-            disabled={locationStatus === 'fetching'}
-          >
-            {locationStatus === 'fetching' ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : locationStatus === 'success' ? (
-              <>
-                <Feather name="check" size={20} color="#FFFFFF" style={styles.iconMargin} />
-                <Text style={styles.locationBtnText}>Location Selected ✓</Text>
-              </>
-            ) : (
-              <>
-                <Feather name="map-pin" size={20} color="#FFFFFF" style={styles.iconMargin} />
-                <Text style={styles.locationBtnText}>Use Current Location</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={{ gap: 8 }}>
+            <TouchableOpacity
+              style={[
+                styles.locationBtn,
+                locationStatus === 'success' && locationType === 'CURRENT' && styles.locationBtnSuccess,
+              ]}
+              activeOpacity={0.8}
+              onPress={handleGetCurrentLocation}
+              disabled={locationStatus === 'fetching'}
+            >
+              {locationStatus === 'fetching' && locationType === 'CURRENT' ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : locationStatus === 'success' && locationType === 'CURRENT' ? (
+                <>
+                  <Feather name="check" size={20} color="#FFFFFF" style={styles.iconMargin} />
+                  <Text style={styles.locationBtnText}>Current Location Selected ✓</Text>
+                </>
+              ) : (
+                <>
+                  <Feather name="map-pin" size={20} color="#FFFFFF" style={styles.iconMargin} />
+                  <Text style={styles.locationBtnText}>Use Current Location</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <Text style={{ color: '#8E8E93', fontSize: 11, fontWeight: '800', textAlign: 'center', marginVertical: 2 }}>OR</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.locationBtn,
+                { backgroundColor: '#0A84FF' },
+                locationStatus === 'success' && locationType === 'MAP' && styles.locationBtnSuccess,
+              ]}
+              activeOpacity={0.8}
+              onPress={handleOpenMapSelector}
+              disabled={locationStatus === 'fetching'}
+            >
+              {locationStatus === 'fetching' && locationType === 'MAP' ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : locationStatus === 'success' && locationType === 'MAP' ? (
+                <>
+                  <Feather name="check" size={20} color="#FFFFFF" style={styles.iconMargin} />
+                  <Text style={styles.locationBtnText}>✓ Custom Location Selected</Text>
+                </>
+              ) : (
+                <>
+                  <Feather name="map" size={20} color="#FFFFFF" style={styles.iconMargin} />
+                  <Text style={styles.locationBtnText}>Pick Location on Map</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
           {locationStatus === 'success' && centerLatitude && centerLongitude && (
             <Text style={styles.coordinatesText}>
               Coordinates: {centerLatitude.toFixed(5)}, {centerLongitude.toFixed(5)}
@@ -358,7 +550,7 @@ export default function GeoFenceScreen({ onNavigateBack }: GeoFenceScreenProps) 
                     <View style={styles.zoneDetailsRow}>
                       <Feather name="user" size={13} color="#8E8E93" />
                       <Text style={styles.zoneDetailText}>
-                        {zone.protectedUserName || 'Protected User'}
+                        {formatName(zone.protectedUserName)}
                       </Text>
                     </View>
                     <View style={styles.zoneDetailsRow}>
@@ -441,11 +633,11 @@ export default function GeoFenceScreen({ onNavigateBack }: GeoFenceScreenProps) 
                   >
                     <View style={styles.contactAvatar}>
                       <Text style={styles.contactAvatarText}>
-                        {item.fullName.charAt(0).toUpperCase()}
+                        {formatName(item.fullName).charAt(0).toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.contactInfo}>
-                      <Text style={styles.contactName}>{item.fullName}</Text>
+                      <Text style={styles.contactName}>{formatName(item.fullName)}</Text>
                       <Text style={styles.contactRelation}>{item.relation}</Text>
                     </View>
                     <Feather name="chevron-right" size={18} color="#8E8E93" />
@@ -455,6 +647,81 @@ export default function GeoFenceScreen({ onNavigateBack }: GeoFenceScreenProps) 
             )}
           </View>
         </View>
+      </Modal>
+
+      {/* Fullscreen Map Selector Modal */}
+      <Modal
+        visible={mapSelectorVisible}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => setMapSelectorVisible(false)}
+      >
+        <SafeAreaView style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => setMapSelectorVisible(false)}
+              style={styles.backBtn}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Pick Location on Map</Text>
+              <Text style={styles.headerSubtitle}>
+                Tap on the map to set the safe zone center coordinates.
+              </Text>
+            </View>
+          </View>
+
+          {/* Map WebView */}
+          <View style={styles.content}>
+            {mapCenter && !mapLoading && (
+              <WebView
+                style={styles.map}
+                source={{ html: mapHtmlContent }}
+                originWhitelist={['*']}
+                domStorageEnabled={true}
+                javaScriptEnabled={true}
+                onMessage={handleMapMessage}
+              />
+            )}
+            {mapLoading && (
+              <View style={[StyleSheet.absoluteFillObject, styles.center, { backgroundColor: '#0F0F11' }]}>
+                <ActivityIndicator size="large" color="#FF3B30" />
+                <Text style={styles.loadingText}>Fetching map center...</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Confirm Coordinates bottom overlay */}
+          {tempLatitude && tempLongitude ? (
+            <View style={styles.confirmBottomCard}>
+              <Text style={styles.confirmCoordsText}>
+                Coordinates: {tempLatitude.toFixed(5)}, {tempLongitude.toFixed(5)}
+              </Text>
+              <TouchableOpacity
+                style={styles.confirmBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setCenterLatitude(tempLatitude);
+                  setCenterLongitude(tempLongitude);
+                  setLocationStatus('success');
+                  setLocationType('MAP');
+                  setMapSelectorVisible(false);
+                }}
+              >
+                <Text style={styles.confirmBtnText}>Confirm Location</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.confirmBottomCard}>
+              <Text style={styles.mapTipText}>
+                Tap anywhere on the map to place a center marker
+              </Text>
+            </View>
+          )}
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -828,5 +1095,64 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  content: {
+    flex: 1,
+    position: 'relative',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  confirmBottomCard: {
+    backgroundColor: '#1C1C1E',
+    borderTopWidth: 1.5,
+    borderTopColor: '#2C2C2E',
+    padding: 20,
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  confirmCoordsText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  mapTipText: {
+    color: '#8E8E93',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingVertical: 10,
+  },
+  confirmBtn: {
+    height: 50,
+    backgroundColor: '#D32F2F',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#D32F2F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  confirmBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0F0F11',
+    padding: 30,
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    marginTop: 12,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });
