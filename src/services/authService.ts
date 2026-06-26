@@ -145,9 +145,12 @@ export async function mobileRegister(
 /**
  * Dispatches a 6-digit verification code to the target email.
  */
-export async function sendEmailOtp(email: string): Promise<{ success: boolean; message?: string }> {
+export async function sendEmailOtp(email: string, phoneNumber?: string): Promise<{ success: boolean; message?: string; status?: number }> {
   const url = `${BACKEND_API_URL}/auth/send-email-otp`;
-  const payload = { email };
+  const payload: any = { email };
+  if (phoneNumber) {
+    payload.phoneNumber = phoneNumber;
+  }
 
   console.log(`[API Request] POST - ${url}`);
   console.log(`[API Payload]`, JSON.stringify(payload, null, 2));
@@ -165,7 +168,7 @@ export async function sendEmailOtp(email: string): Promise<{ success: boolean; m
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      return { success: false, message: errorData.message || `HTTP Error: ${response.status}` };
+      return { success: false, message: errorData.message || `HTTP Error: ${response.status}`, status: response.status };
     }
 
     const data = await response.json();

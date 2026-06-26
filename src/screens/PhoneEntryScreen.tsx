@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import CustomButton from '../components/CustomButton';
+import CareWaveAlertModal from '../components/CareWaveAlertModal';
 import { checkUserExists, sendEmailOtp } from '../services/authService';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -31,6 +32,7 @@ export default function PhoneEntryScreen({ onNavigateToOtp }: PhoneEntryScreenPr
   const [stage, setStage] = useState<'PHONE' | 'EMAIL'>('PHONE');
   const [userExists, setUserExists] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showEmailExistsModal, setShowEmailExistsModal] = useState(false);
 
   const handlePhoneSubmit = async () => {
     const cleanNumber = phoneNumber.replace(/\D/g, '');
@@ -53,7 +55,7 @@ export default function PhoneEntryScreen({ onNavigateToOtp }: PhoneEntryScreenPr
       if (response.exists) {
         if (response.email && response.email.trim() !== '') {
           console.log(`[PhoneEntry] User exists with linked email: ${response.email}. Dispatched OTP.`);
-          const sendRes = await sendEmailOtp(response.email);
+          const sendRes = await sendEmailOtp(response.email, cleanNumber);
           setLoading(false);
           if (sendRes.success) {
             onNavigateToOtp(cleanNumber, response.email, true);
@@ -92,14 +94,18 @@ export default function PhoneEntryScreen({ onNavigateToOtp }: PhoneEntryScreenPr
     Keyboard.dismiss();
     setLoading(true);
     try {
-      console.log(`[PhoneEntry] Dispatched OTP to entered email: ${cleanEmail}`);
-      const sendRes = await sendEmailOtp(cleanEmail);
+      const cleanNumber = phoneNumber.replace(/\D/g, '');
+      console.log(`[PhoneEntry] Dispatched OTP to entered email: ${cleanEmail} for phone: ${cleanNumber}`);
+      const sendRes = await sendEmailOtp(cleanEmail, cleanNumber);
       setLoading(false);
       if (sendRes.success) {
-        const cleanNumber = phoneNumber.replace(/\D/g, '');
         onNavigateToOtp(cleanNumber, cleanEmail, userExists);
       } else {
-        Alert.alert('Verification Error', sendRes.message || 'Could not send verification code.');
+        if (sendRes.status === 409) {
+          setShowEmailExistsModal(true);
+        } else {
+          Alert.alert('Verification Error', sendRes.message || 'Could not send verification code.');
+        }
       }
     } catch (error) {
       setLoading(false);
@@ -219,6 +225,15 @@ export default function PhoneEntryScreen({ onNavigateToOtp }: PhoneEntryScreenPr
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CareWaveAlertModal
+        visible={showEmailExistsModal}
+        type="ERROR"
+        title="Email Already Registered"
+        message="This email is already linked to another CareWave account. Please use a different email or sign in."
+        onClose={() => setShowEmailExistsModal(false)}
+        okButtonColor="#FF4D4F"
+      />
     </SafeAreaView>
   );
 }

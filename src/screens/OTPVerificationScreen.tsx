@@ -131,8 +131,8 @@ export default function OTPVerificationScreen({
   const handleResend = async () => {
     setLoading(true);
     try {
-      console.log(`[OTPVerify] Resending OTP to: ${email}`);
-      const sendRes = await sendEmailOtp(email);
+      console.log(`[OTPVerify] Resending OTP to: ${email} for phone: ${phoneNumber}`);
+      const sendRes = await sendEmailOtp(email, phoneNumber);
       setLoading(false);
       if (sendRes.success) {
         setTimer(30);

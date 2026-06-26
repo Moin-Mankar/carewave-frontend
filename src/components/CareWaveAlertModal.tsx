@@ -17,6 +17,7 @@ interface CareWaveAlertModalProps {
   message: string;
   onClose: () => void;
   onConfirm?: () => void;
+  okButtonColor?: string;
 }
 
 export default function CareWaveAlertModal({
@@ -26,6 +27,7 @@ export default function CareWaveAlertModal({
   message,
   onClose,
   onConfirm,
+  okButtonColor,
 }: CareWaveAlertModalProps) {
   const isConfirmType = type === 'DELETE_CONFIRMATION';
 
@@ -81,7 +83,7 @@ export default function CareWaveAlertModal({
               </>
             ) : (
               <TouchableOpacity
-                style={[styles.button, styles.okButton]}
+                style={[styles.button, styles.okButton, okButtonColor ? { backgroundColor: okButtonColor } : null]}
                 onPress={onClose}
                 activeOpacity={0.8}
               >
