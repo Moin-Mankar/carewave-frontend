@@ -127,31 +127,33 @@ export default function ProfileScreen({
     }
   };
 
-  // Save changes to personal/medical info
-  const handleSaveProfile = async (section: 'PERSONAL' | 'MEDICAL') => {
+  // Save changes to profile info
+  const handleSaveProfile = async () => {
     setProfileSaving(true);
     try {
-      const payload: Partial<UserProfile> = section === 'PERSONAL' 
-        ? {
-            firstName: editFirstName.trim(),
-            lastName: editLastName.trim() || null,
-            email: editEmail.trim() || null,
-            gender: editGender
-          }
-        : {
-            bloodGroup: editBloodGroup
-          };
-
-      if (section === 'PERSONAL' && !editFirstName.trim()) {
-        Alert.alert('Validation Error', 'First name cannot be empty.');
+      if (!editFirstName.trim()) {
+        Alert.alert('Validation Error', 'Full name cannot be empty.');
         setProfileSaving(false);
         return;
       }
 
+      const payload: Partial<UserProfile> = {
+        firstName: editFirstName.trim(),
+        gender: editGender,
+        bloodGroup: editBloodGroup
+      };
+
       const updated = await updateUserProfile(payload);
       setProfile(updated);
-      Alert.alert('Success', 'Profile updated successfully.');
-      setCurrentView('DASHBOARD');
+      setEditFirstName(updated.firstName);
+      setEditGender(updated.gender);
+      setEditBloodGroup(updated.bloodGroup);
+
+      Alert.alert(
+        'Profile Updated',
+        'Your profile has been updated successfully.',
+        [{ text: 'OK', onPress: () => setCurrentView('DASHBOARD') }]
+      );
     } catch (err: any) {
       console.error('[ProfileScreen] Error saving profile changes:', err);
       Alert.alert('Update Failed', err.message || 'Failed to save changes.');
@@ -193,7 +195,7 @@ export default function ProfileScreen({
   // Render Dashboard
   const renderDashboard = () => {
     const fullName = profile 
-      ? `${profile.firstName} ${profile.lastName || ''}`.trim()
+      ? profile.firstName.trim()
       : initialFirstName;
 
     return (
@@ -220,21 +222,6 @@ export default function ProfileScreen({
             <View style={styles.menuTextBox}>
               <Text style={styles.menuTitle}>Personal Information</Text>
               <Text style={styles.menuSubtitle}>Manage your account details</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.menuItem} 
-            activeOpacity={0.8}
-            onPress={() => navigateToView('MEDICAL_INFO')}
-          >
-            <View style={styles.menuIconBox}>
-              <Feather name="activity" size={20} color="#FF5252" />
-            </View>
-            <View style={styles.menuTextBox}>
-              <Text style={styles.menuTitle}>Medical Information</Text>
-              <Text style={styles.menuSubtitle}>Blood group and emergency data</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
           </TouchableOpacity>
@@ -314,33 +301,13 @@ export default function ProfileScreen({
     return (
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
-          <Text style={styles.formLabel}>First Name</Text>
+          <Text style={styles.formLabel}>Full Name</Text>
           <TextInput
             style={styles.textInput}
-            placeholder="Enter first name"
+            placeholder="Enter full name"
             placeholderTextColor="#8E8E93"
             value={editFirstName}
             onChangeText={setEditFirstName}
-          />
-
-          <Text style={[styles.formLabel, { marginTop: 16 }]}>Last Name</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Enter last name"
-            placeholderTextColor="#8E8E93"
-            value={editLastName}
-            onChangeText={setEditLastName}
-          />
-
-          <Text style={[styles.formLabel, { marginTop: 16 }]}>Email</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Optional email address"
-            placeholderTextColor="#8E8E93"
-            value={editEmail}
-            onChangeText={setEditEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
           />
 
           <Text style={[styles.formLabel, { marginTop: 16 }]}>Gender</Text>
@@ -355,15 +322,40 @@ export default function ProfileScreen({
             <Ionicons name="chevron-down" size={18} color="#8E8E93" />
           </TouchableOpacity>
 
-          <Text style={[styles.formLabel, { marginTop: 16 }]}>Phone Number (Read-Only)</Text>
-          <View style={[styles.textInput, styles.readOnlyInput]}>
+          <Text style={[styles.formLabel, { marginTop: 16 }]}>Blood Group</Text>
+          <TouchableOpacity 
+            style={styles.dropdownSelector} 
+            onPress={() => setBloodGroupModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.dropdownValue, !editBloodGroup && styles.dropdownPlaceholder]}>
+              {getBloodGroupLabel(editBloodGroup)}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color="#8E8E93" />
+          </TouchableOpacity>
+
+          <Text style={[styles.formLabel, { marginTop: 16 }]}>Email</Text>
+          <View style={[styles.textInput, styles.readOnlyInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+            <Text style={styles.readOnlyText}>{editEmail || 'N/A'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Feather name="lock" size={12} color="#34C759" />
+              <Text style={[styles.readOnlyText, { color: '#34C759', fontSize: 12 }]}>Verified</Text>
+            </View>
+          </View>
+
+          <Text style={[styles.formLabel, { marginTop: 16 }]}>Phone Number</Text>
+          <View style={[styles.textInput, styles.readOnlyInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
             <Text style={styles.readOnlyText}>{phoneNumber}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Feather name="lock" size={12} color="#34C759" />
+              <Text style={[styles.readOnlyText, { color: '#34C759', fontSize: 12 }]}>Verified</Text>
+            </View>
           </View>
         </View>
 
         <TouchableOpacity 
           style={styles.primarySaveBtn} 
-          onPress={() => handleSaveProfile('PERSONAL')}
+          onPress={handleSaveProfile}
           activeOpacity={0.8}
           disabled={profileSaving}
         >
@@ -407,7 +399,7 @@ export default function ProfileScreen({
 
         <TouchableOpacity 
           style={styles.primarySaveBtn} 
-          onPress={() => handleSaveProfile('MEDICAL')}
+          onPress={handleSaveProfile}
           activeOpacity={0.8}
           disabled={profileSaving}
         >
@@ -537,8 +529,8 @@ export default function ProfileScreen({
             <Text style={styles.aboutSectionHeader}>Development Team</Text>
             <Text style={styles.aboutSectionBody}>1.Moin Mankar</Text>
              <Text style={styles.aboutSectionBody}>2.Nakul Siricilla</Text>
-              <Text style={styles.aboutSectionBody}>3. Saish 67 Sanas</Text>
-               <Text style={styles.aboutSectionBody}>4.Mohd Shaban Ali</Text>
+              <Text style={styles.aboutSectionBody}>3. Saish Sanas</Text>
+               <Text style={styles.aboutSectionBody}>4.Mohd. Shaban Ali</Text>
           </View>
         </View>
       </ScrollView>
